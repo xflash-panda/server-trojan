@@ -1,0 +1,23 @@
+package service
+
+const (
+	protocol = "trojan"
+	TLS      = "tls"
+	TCP      = "tcp"
+)
+
+// Service is the interface of all the services running in the panel
+type Service interface {
+	Start() error
+	Close() error
+}
+
+type CertConfig struct {
+	CertFile string
+	KeyFile  string
+}
+
+type FallBackConfig struct {
+	Host string
+	Port int
+}
