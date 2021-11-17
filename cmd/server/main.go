@@ -121,7 +121,7 @@ func main() {
 			} else if config.LogLevel == LogLevelError {
 				log.SetLevel(log.ErrorLevel)
 			} else {
-				log.Panicf("log mode %s not supported", config.LogLevel)
+				return fmt.Errorf("log mode %s not supported", config.LogLevel)
 			}
 			return nil
 		},
