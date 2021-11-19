@@ -19,6 +19,9 @@ go build -o server-trojan -ldflags "-s -w"
 chmod +x server-trojan
 ./server-trojan --api xxx --token xxx --node xxx
 ```
+**一键安装**
+* [server-trojan-install](https://github.com/xflash-panda/server-trojan-install)
+
 
 ##  Thanks
 * [Project X](https://github.com/XTLS/)
