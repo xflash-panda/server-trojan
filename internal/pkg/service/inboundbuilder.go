@@ -17,8 +17,11 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo) (*core.InboundHandle
 
 	inboundDetourConfig := &conf.InboundDetourConfig{}
 	// Build Port
-	portRange := &conf.PortRange{From: uint32(nodeInfo.ServerPort), To: uint32(nodeInfo.ServerPort)}
-	inboundDetourConfig.PortRange = portRange
+	portList := &conf.PortList{
+		Range: []conf.PortRange{{From: uint32(nodeInfo.ServerPort), To: uint32(nodeInfo.ServerPort)}},
+	}
+	inboundDetourConfig.PortList = portList
+
 	// Build Tag
 	inboundDetourConfig.Tag = fmt.Sprintf("%s_%d", protocol, nodeInfo.ServerPort)
 	// SniffingConfig
