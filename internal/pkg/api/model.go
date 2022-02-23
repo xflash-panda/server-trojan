@@ -1,5 +1,7 @@
 package api
 
+import "github.com/xtls/xray-core/infra/conf"
+
 // API is the interface for different panel's api.
 type API interface {
 	GetNodeInfo() (nodeInfo *NodeInfo, err error)
@@ -20,10 +22,13 @@ type RepUserTraffic struct {
 }
 
 type NodeInfo struct {
-	ID            int    `json:"id"`
-	ServerPort    int    `json:"server_port"`
-	AllowInsecure int    `json:"allow_insecure"`
-	ServerName    string `json:"server_name"`
+	ID              int                   `json:"id"`
+	ServerPort      int                   `json:"server_port"`
+	AllowInsecure   int                   `json:"allow_insecure"`
+	ServerName      string                `json:"server_name"`
+	Network         string                `json:"network"`
+	WebSocketConfig *conf.WebSocketConfig `json:"ws_settings,omitempty"`
+	GrpcConfig      *conf.GRPCConfig      `json:"grpc_settings,omitempty"`
 }
 
 type RepNodeInfo struct {

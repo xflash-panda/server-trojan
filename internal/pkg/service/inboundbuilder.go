@@ -11,8 +11,9 @@ import (
 //InboundBuilder build Inbound config for different protocol
 func InboundBuilder(config *Config, nodeInfo *api.NodeInfo) (*core.InboundHandlerConfig, error) {
 	var (
-		streamSetting *conf.StreamConfig
-		jsonSetting   json.RawMessage
+		streamSetting     *conf.StreamConfig
+		jsonSetting       json.RawMessage
+		transportProtocol conf.TransportProtocol
 	)
 
 	inboundDetourConfig := &conf.InboundDetourConfig{}
@@ -40,13 +41,32 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo) (*core.InboundHandle
 
 	// Build streamSettings
 	streamSetting = new(conf.StreamConfig)
-	transportProtocol := conf.TransportProtocol(TCP)
+	if nodeInfo.Network == "" {
+		transportProtocol = conf.TransportProtocol(TCP)
+	} else {
+		transportProtocol = conf.TransportProtocol(nodeInfo.Network)
+	}
 	_, err = transportProtocol.Build()
 	if err != nil {
 		return nil, fmt.Errorf("convert TransportProtocol failed: %s", err)
 	}
 
+	if nodeInfo.Network == WS {
+		if nodeInfo.WebSocketConfig != nil {
+			streamSetting.WSSettings = nodeInfo.WebSocketConfig
+		} else {
+			streamSetting.WSSettings = &conf.WebSocketConfig{}
+		}
+	} else if nodeInfo.Network == GRPC {
+		if nodeInfo.GrpcConfig != nil {
+			streamSetting.GRPCConfig = nodeInfo.GrpcConfig
+		} else {
+			streamSetting.GRPCConfig = &conf.GRPCConfig{}
+		}
+	}
+
 	streamSetting.Network = &transportProtocol
+
 	streamSetting.Security = TLS
 	tlsSettings := &conf.TLSConfig{
 		ServerName: nodeInfo.ServerName,
