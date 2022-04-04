@@ -24,8 +24,8 @@ type Builder struct {
 	config                  *Config
 	nodeInfo                *api.NodeInfo
 	inboundTag              string
-	userList                []*api.UserInfo
-	getUserList             func() ([]*api.UserInfo, error)
+	userList                *[]api.UserInfo
+	getUserList             func() (*[]api.UserInfo, error)
 	reportUserTraffic       func([]*api.UserTraffic) error
 	nodeInfoMonitorPeriodic *task.Periodic
 	userReportPeriodic      *task.Periodic
@@ -33,7 +33,7 @@ type Builder struct {
 
 // New return a builder service with default parameters.
 func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.NodeInfo,
-	getUserList func() ([]*api.UserInfo, error), reportUserTraffic func([]*api.UserTraffic) error,
+	getUserList func() (*[]api.UserInfo, error), reportUserTraffic func([]*api.UserTraffic) error,
 ) *Builder {
 	builder := &Builder{
 		inboundTag:        inboundTag,
@@ -76,7 +76,7 @@ func (b *Builder) addUsers(users []*cProtocol.User, tag string) error {
 }
 
 // addNewUser
-func (b *Builder) addNewUser(userInfo []*api.UserInfo) (err error) {
+func (b *Builder) addNewUser(userInfo []api.UserInfo) (err error) {
 	users := make([]*cProtocol.User, 0)
 	users = buildUser(b.inboundTag, userInfo)
 
@@ -95,7 +95,7 @@ func (b *Builder) Start() error {
 	if err != nil {
 		return err
 	}
-	err = b.addNewUser(userList)
+	err = b.addNewUser(*userList)
 	if err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func (b *Builder) nodeInfoMonitor() (err error) {
 		return nil
 	}
 
-	deleted, added := compareUserList(b.userList, newUserList)
+	deleted, added := compareUserList1(b.userList, newUserList)
 	if len(deleted) > 0 {
 		deletedEmail := make([]string, len(deleted))
 		for i, u := range deleted {
@@ -225,7 +225,7 @@ func (b *Builder) nodeInfoMonitor() (err error) {
 func (b *Builder) userInfoMonitor() (err error) {
 	// Get User traffic
 	userTraffic := make([]*api.UserTraffic, 0)
-	for _, user := range b.userList {
+	for _, user := range *b.userList {
 		email := buildUserEmail(b.inboundTag, user.ID, user.UUID)
 		up, down := b.getTraffic(email)
 		if up > 0 || down > 0 {
@@ -247,20 +247,19 @@ func (b *Builder) userInfoMonitor() (err error) {
 	return nil
 }
 
-//compareUserList
-func compareUserList(old, new []*api.UserInfo) (deleted, added []*api.UserInfo) {
-	msrc := make(map[*api.UserInfo]byte) //按源数组建索引
-	mall := make(map[*api.UserInfo]byte) //源+目所有元素建索引
+func compareUserList1(old, new *[]api.UserInfo) (deleted, added []api.UserInfo) {
+	msrc := make(map[api.UserInfo]byte) //按源数组建索引
+	mall := make(map[api.UserInfo]byte) //源+目所有元素建索引
 
-	var set []*api.UserInfo //交集
+	var set []api.UserInfo //交集
 
 	//1.源数组建立map
-	for _, v := range old {
+	for _, v := range *old {
 		msrc[v] = 0
 		mall[v] = 0
 	}
 	//2.目数组中，存不进去，即重复元素，所有存不进去的集合就是并集
-	for _, v := range new {
+	for _, v := range *new {
 		l := len(mall)
 		mall[v] = 1
 		if l != len(mall) { //长度变化，即可以存

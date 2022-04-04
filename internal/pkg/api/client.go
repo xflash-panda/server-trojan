@@ -97,7 +97,7 @@ func (c *Client) GetNodeInfo() (nodeInfo *NodeInfo, err error) {
 }
 
 // GetUserList will pull user form sspanel
-func (c *Client) GetUserList() (UserList []*UserInfo, err error) {
+func (c *Client) GetUserList() (UserList *[]UserInfo, err error) {
 	var path = "/api/v1/server/trojan/users"
 	res, err := c.client.R().
 		SetQueryParam("node_id", strconv.Itoa(c.config.NodeID)).

@@ -8,7 +8,7 @@ import (
 	"github.com/xtls/xray-core/proxy/trojan"
 )
 
-func buildUser(tag string, userInfo []*api.UserInfo) (users []*cProtocol.User) {
+func buildUser(tag string, userInfo []api.UserInfo) (users []*cProtocol.User) {
 	users = make([]*cProtocol.User, len(userInfo))
 	for i, user := range userInfo {
 		trojanAccount := &trojan.Account{
