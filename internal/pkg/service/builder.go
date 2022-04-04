@@ -195,7 +195,7 @@ func (b *Builder) nodeInfoMonitor() (err error) {
 		return nil
 	}
 
-	deleted, added := compareUserList1(b.userList, newUserList)
+	deleted, added := compareUserList(b.userList, newUserList)
 	if len(deleted) > 0 {
 		deletedEmail := make([]string, len(deleted))
 		for i, u := range deleted {
@@ -247,7 +247,7 @@ func (b *Builder) userInfoMonitor() (err error) {
 	return nil
 }
 
-func compareUserList1(old, new *[]api.UserInfo) (deleted, added []api.UserInfo) {
+func compareUserList(old, new *[]api.UserInfo) (deleted, added []api.UserInfo) {
 	msrc := make(map[api.UserInfo]byte) //按源数组建索引
 	mall := make(map[api.UserInfo]byte) //源+目所有元素建索引
 
