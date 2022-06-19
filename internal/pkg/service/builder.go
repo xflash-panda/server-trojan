@@ -239,7 +239,9 @@ func (b *Builder) userInfoMonitor() (err error) {
 			userTraffic = append(userTraffic, &api.UserTraffic{
 				UID:      user.ID,
 				Upload:   up,
-				Download: down})
+				Download: down,
+				Count:    count,
+			})
 		}
 	}
 	log.Infof("%d user traffic needs to be reported", len(userTraffic))

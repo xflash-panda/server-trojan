@@ -128,17 +128,10 @@ func (c *Client) GetUserList() (UserList *[]UserInfo, err error) {
 //ReportUserTraffic reports the user traffic
 func (c *Client) ReportUserTraffic(userTraffic []*UserTraffic) error {
 	var path = "/api/v1/server/trojan/submit"
-	data := make([]*UserTraffic, len(userTraffic))
-	for i, traffic := range userTraffic {
-		data[i] = &UserTraffic{
-			UID:      traffic.UID,
-			Upload:   traffic.Upload,
-			Download: traffic.Download}
-	}
 
 	res, err := c.client.R().
 		SetQueryParam("node_id", strconv.Itoa(c.config.NodeID)).
-		SetBody(data).
+		SetBody(userTraffic).
 		ForceContentType("application/json").
 		Post(path)
 	if err != nil {
