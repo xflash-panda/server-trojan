@@ -18,7 +18,7 @@ import (
 
 const (
 	Name          = "trojan-node"
-	Version       = "0.1.8"
+	Version       = "0.1.9.alpha"
 	CopyRight     = "XFLASH-PANDA@2021"
 	LogLevelDebug = "debug"
 	LogLevelError = "error"
@@ -128,7 +128,9 @@ func main() {
 		Action: func(c *cli.Context) error {
 			if config.LogLevel != LogLevelDebug {
 				defer func() {
-					recover()
+					if e := recover(); e != nil {
+						panic(e)
+					}
 				}()
 			}
 			serviceConfig.Cert = &certConfig

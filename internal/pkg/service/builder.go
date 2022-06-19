@@ -142,12 +142,14 @@ func (b *Builder) Close() error {
 }
 
 //getTraffic
-func (b *Builder) getTraffic(email string) (up int64, down int64) {
+func (b *Builder) getTraffic(email string) (up int64, down int64, count int64) {
 	upName := "user>>>" + email + ">>>traffic>>>uplink"
 	downName := "user>>>" + email + ">>>traffic>>>downlink"
+	countName := "user>>>" + email + ">>>request>>>count"
 	statsManager := b.instance.GetFeature(stats.ManagerType()).(stats.Manager)
 	upCounter := statsManager.GetCounter(upName)
 	downCounter := statsManager.GetCounter(downName)
+	countCounter := statsManager.GetCounter(countName)
 	if upCounter != nil {
 		up = upCounter.Value()
 		upCounter.Set(0)
@@ -156,7 +158,12 @@ func (b *Builder) getTraffic(email string) (up int64, down int64) {
 		down = downCounter.Value()
 		downCounter.Set(0)
 	}
-	return up, down
+	if countCounter != nil {
+		count = countCounter.Value()
+		countCounter.Set(0)
+	}
+
+	return up, down, count
 
 }
 
@@ -227,8 +234,8 @@ func (b *Builder) userInfoMonitor() (err error) {
 	userTraffic := make([]*api.UserTraffic, 0)
 	for _, user := range *b.userList {
 		email := buildUserEmail(b.inboundTag, user.ID, user.UUID)
-		up, down := b.getTraffic(email)
-		if up > 0 || down > 0 {
+		up, down, count := b.getTraffic(email)
+		if up > 0 || down > 0 || count > 0 {
 			userTraffic = append(userTraffic, &api.UserTraffic{
 				UID:      user.ID,
 				Upload:   up,
