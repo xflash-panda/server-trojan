@@ -38,8 +38,8 @@ func TestReportUserTraffic(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	generalUserTraffic := make([]*UserTraffic, len(userList))
-	for i, userInfo := range userList {
+	generalUserTraffic := make([]*UserTraffic, len(*userList))
+	for i, userInfo := range *userList {
 		generalUserTraffic[i] = &UserTraffic{
 			UID:      userInfo.ID,
 			Upload:   114514,

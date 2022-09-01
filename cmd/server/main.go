@@ -98,7 +98,6 @@ func main() {
 				Required:    false,
 				Destination: &serviceConfig.SysInterval,
 			},
-
 			&cli.StringFlag{
 				Name:        "log_mode",
 				Value:       LogLevelError,
