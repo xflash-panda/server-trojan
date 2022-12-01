@@ -71,8 +71,6 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo) (*core.InboundHandle
 	tlsSettings := &conf.TLSConfig{
 		ServerName: nodeInfo.ServerName,
 		Insecure:   nodeInfo.AllowInsecure != 0,
-		MinVersion: "1.0",
-		MaxVersion: "1.1",
 	}
 
 	if config.Cert.CertFile != "" && config.Cert.KeyFile != "" {
