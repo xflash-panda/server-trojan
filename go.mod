@@ -1,12 +1,12 @@
 module github.com/xflash-panda/server-trojan
 
-go 1.17
+go 1.18
 
 require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/xtls/xray-core v1.5.6
+	github.com/xtls/xray-core v1.6.4
 	google.golang.org/protobuf v1.28.0
 )
 
