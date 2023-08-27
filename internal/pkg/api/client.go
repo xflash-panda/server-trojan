@@ -72,7 +72,10 @@ func (c *Client) GetNodeInfo() (nodeInfo *NodeInfo, err error) {
 	var path = "/api/v1/server/trojan/config"
 	res, err := c.client.R().
 		ForceContentType("application/json").
-		SetQueryParam("node_id", strconv.Itoa(c.config.NodeID)).
+		SetQueryParams(map[string]string{
+			"node_id": strconv.Itoa(c.config.NodeID),
+			"random":  strconv.FormatInt(time.Now().Unix(), 10),
+		}).
 		Get(path)
 
 	if err != nil {
@@ -95,11 +98,14 @@ func (c *Client) GetNodeInfo() (nodeInfo *NodeInfo, err error) {
 	return repNodeInfo.Data, nil
 }
 
-// GetUserList will pull user form sspanel
+// GetUserList will pull user form v2board
 func (c *Client) GetUserList() (UserList *[]UserInfo, err error) {
 	var path = "/api/v1/server/trojan/users"
 	res, err := c.client.R().
-		SetQueryParam("node_id", strconv.Itoa(c.config.NodeID)).
+		SetQueryParams(map[string]string{
+			"node_id": strconv.Itoa(c.config.NodeID),
+			"random":  strconv.FormatInt(time.Now().Unix(), 10),
+		}).
 		ForceContentType("application/json").
 		Get(path)
 
@@ -124,7 +130,7 @@ func (c *Client) GetUserList() (UserList *[]UserInfo, err error) {
 	return repUserList.Data, nil
 }
 
-//ReportUserTraffic reports the user traffic
+// ReportUserTraffic reports the user traffic
 func (c *Client) ReportUserTraffic(userTraffic []*UserTraffic) error {
 	var path = "/api/v1/server/trojan/submit"
 
