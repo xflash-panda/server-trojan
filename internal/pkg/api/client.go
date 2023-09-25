@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
@@ -33,7 +34,8 @@ func New(apiConfig *Config) *Client {
 		client.SetTimeout(5 * time.Second)
 	}
 	client.OnError(func(req *resty.Request, err error) {
-		if v, ok := err.(*resty.ResponseError); ok {
+		var v *resty.ResponseError
+		if errors.As(err, &v) {
 			// v.Response contains the last response from the server
 			// v.Err contains the original error
 			log.Errorln(v.Err)
@@ -45,6 +47,7 @@ func New(apiConfig *Config) *Client {
 		"node_id": strconv.Itoa(apiConfig.NodeID),
 		"token":   apiConfig.Token,
 	})
+	client.SetCloseConnection(true)
 
 	apiClient := &Client{
 		client: client,
