@@ -4,8 +4,8 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	api "github.com/xflash-panda/server-client/pkg"
 	"github.com/xflash-panda/server-trojan/internal/app/server"
-	"github.com/xflash-panda/server-trojan/internal/pkg/api"
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 	"github.com/xtls/xray-core/core"
 	"io/ioutil"
@@ -18,7 +18,7 @@ import (
 
 const (
 	Name          = "trojan-node"
-	Version       = "0.1.13"
+	Version       = "0.1.14"
 	CopyRight     = "XFLASH-PANDA@2021"
 	LogLevelDebug = "debug"
 	LogLevelError = "error"
@@ -64,13 +64,6 @@ func main() {
 				Required:    true,
 				Destination: &apiConfig.Token,
 			},
-			&cli.IntFlag{
-				Name:        "node",
-				Usage:       "Node ID",
-				EnvVars:     []string{"X_PANDA_TROJAN_NODE", "NODE"},
-				Required:    true,
-				Destination: &apiConfig.NodeID,
-			},
 			&cli.StringFlag{
 				Name:        "cert_file",
 				Usage:       "Cert file",
@@ -88,6 +81,13 @@ func main() {
 				Required:    false,
 				DefaultText: "/root/.cert/server.key",
 				Destination: &certConfig.KeyFile,
+			},
+			&cli.IntFlag{
+				Name:        "node",
+				Usage:       "Node ID",
+				EnvVars:     []string{"X_PANDA_TROJAN_NODE", "NODE"},
+				Required:    true,
+				Destination: &serviceConfig.NodeID,
 			},
 			&cli.DurationFlag{
 				Name:        "sys_interval",

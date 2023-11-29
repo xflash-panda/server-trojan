@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"github.com/xflash-panda/server-trojan/internal/pkg/api"
+	api "github.com/xflash-panda/server-client/pkg"
 	_ "github.com/xflash-panda/server-trojan/internal/pkg/dep"
 	"github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
@@ -38,17 +38,18 @@ func (s *Server) Start() {
 	defer s.access.Unlock()
 	log.Infoln("server start")
 	apiClient := api.New(s.apiConfig)
-	nodeInfo, err := apiClient.GetNodeInfo()
+	nodeConf, err := apiClient.Config(api.NodeId(s.serviceConfig.NodeID), api.Trojan)
 	if err != nil {
 		panic(fmt.Errorf("failed to get node inf :%s", err))
 	}
 
-	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, nodeInfo)
+	trojanConfig := nodeConf.(*api.TrojanConfig)
+	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
 		panic(fmt.Errorf("failed to build inbound config: %s", err))
 	}
 
-	outBoundConfig, err := service.OutboundBuilder(nodeInfo)
+	outBoundConfig, err := service.OutboundBuilder(trojanConfig)
 	if err != nil {
 		panic(fmt.Errorf("failed to build outbound config: %s", err))
 	}
@@ -62,8 +63,8 @@ func (s *Server) Start() {
 		panic(fmt.Errorf("failed to start instance: %s", err))
 	}
 
-	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, nodeInfo,
-		apiClient.GetUserList, apiClient.ReportUserTraffic)
+	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig,
+		apiClient.Users, apiClient.Submit)
 	s.service = buildService
 	if err := s.service.Start(); err != nil {
 		panic(fmt.Errorf("failed to start build service: %s", err))

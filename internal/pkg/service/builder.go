@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"github.com/xflash-panda/server-trojan/internal/pkg/api"
+	api "github.com/xflash-panda/server-client/pkg"
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/task"
 	"github.com/xtls/xray-core/core"
@@ -15,6 +15,7 @@ import (
 )
 
 type Config struct {
+	NodeID      int
 	SysInterval time.Duration
 	Cert        *CertConfig
 }
@@ -22,18 +23,18 @@ type Config struct {
 type Builder struct {
 	instance                *core.Instance
 	config                  *Config
-	nodeInfo                *api.NodeInfo
+	nodeInfo                *api.TrojanConfig
 	inboundTag              string
-	userList                *[]api.UserInfo
-	getUserList             func() (*[]api.UserInfo, error)
-	reportUserTraffic       func([]*api.UserTraffic) error
+	userList                *[]api.User
+	getUserList             func(api.NodeId, api.NodeType) (*[]api.User, error)
+	reportUserTraffic       func(api.NodeId, api.NodeType, []*api.UserTraffic) error
 	nodeInfoMonitorPeriodic *task.Periodic
 	userReportPeriodic      *task.Periodic
 }
 
 // New return a builder service with default parameters.
-func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.NodeInfo,
-	getUserList func() (*[]api.UserInfo, error), reportUserTraffic func([]*api.UserTraffic) error,
+func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig,
+	getUserList func(api.NodeId, api.NodeType) (*[]api.User, error), reportUserTraffic func(api.NodeId, api.NodeType, []*api.UserTraffic) error,
 ) *Builder {
 	builder := &Builder{
 		inboundTag:        inboundTag,
@@ -46,7 +47,7 @@ func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *a
 	return builder
 }
 
-//addUsers
+// addUsers
 func (b *Builder) addUsers(users []*cProtocol.User, tag string) error {
 	inboundManager := b.instance.GetFeature(inbound.ManagerType()).(inbound.Manager)
 	handler, err := inboundManager.GetHandler(context.Background(), tag)
@@ -76,7 +77,7 @@ func (b *Builder) addUsers(users []*cProtocol.User, tag string) error {
 }
 
 // addNewUser
-func (b *Builder) addNewUser(userInfo []api.UserInfo) (err error) {
+func (b *Builder) addNewUser(userInfo []api.User) (err error) {
 	users := make([]*cProtocol.User, 0)
 	users = buildUser(b.inboundTag, userInfo)
 
@@ -91,7 +92,7 @@ func (b *Builder) addNewUser(userInfo []api.UserInfo) (err error) {
 // Start implement the Start() function of the service interface
 func (b *Builder) Start() error {
 	// Update user
-	userList, err := b.getUserList()
+	userList, err := b.getUserList(api.NodeId(b.config.NodeID), api.Trojan)
 	if err != nil {
 		return err
 	}
@@ -141,7 +142,7 @@ func (b *Builder) Close() error {
 	return nil
 }
 
-//getTraffic
+// getTraffic
 func (b *Builder) getTraffic(email string) (up int64, down int64, count int64) {
 	upName := "user>>>" + email + ">>>traffic>>>uplink"
 	downName := "user>>>" + email + ">>>traffic>>>downlink"
@@ -167,7 +168,7 @@ func (b *Builder) getTraffic(email string) (up int64, down int64, count int64) {
 
 }
 
-//removeUsers
+// removeUsers
 func (b *Builder) removeUsers(users []string, tag string) error {
 	inboundManager := b.instance.GetFeature(inbound.ManagerType()).(inbound.Manager)
 	handler, err := inboundManager.GetHandler(context.Background(), tag)
@@ -192,11 +193,11 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 	return nil
 }
 
-//nodeInfoMonitor
+// nodeInfoMonitor
 func (b *Builder) nodeInfoMonitor() (err error) {
 
 	// Update User
-	newUserList, err := b.getUserList()
+	newUserList, err := b.getUserList(api.NodeId(b.config.NodeID), api.Trojan)
 	if err != nil {
 		log.Errorln(err)
 		return nil
@@ -228,7 +229,7 @@ func (b *Builder) nodeInfoMonitor() (err error) {
 	return nil
 }
 
-//userInfoMonitor
+// userInfoMonitor
 func (b *Builder) userInfoMonitor() (err error) {
 	// Get User traffic
 	userTraffic := make([]*api.UserTraffic, 0)
@@ -238,15 +239,15 @@ func (b *Builder) userInfoMonitor() (err error) {
 		if up > 0 || down > 0 || count > 0 {
 			userTraffic = append(userTraffic, &api.UserTraffic{
 				UID:      user.ID,
-				Upload:   up,
-				Download: down,
-				Count:    count,
+				Upload:   uint64(up),
+				Download: uint64(down),
+				Count:    uint64(count),
 			})
 		}
 	}
 	log.Infof("%d user traffic needs to be reported", len(userTraffic))
 	if len(userTraffic) > 0 {
-		err = b.reportUserTraffic(userTraffic)
+		err = b.reportUserTraffic(api.NodeId(b.config.NodeID), api.Trojan, userTraffic)
 		if err != nil {
 			log.Errorln(err)
 			return nil
@@ -256,11 +257,11 @@ func (b *Builder) userInfoMonitor() (err error) {
 	return nil
 }
 
-func compareUserList(old, new *[]api.UserInfo) (deleted, added []api.UserInfo) {
-	msrc := make(map[api.UserInfo]byte) //按源数组建索引
-	mall := make(map[api.UserInfo]byte) //源+目所有元素建索引
+func compareUserList(old, new *[]api.User) (deleted, added []api.User) {
+	msrc := make(map[api.User]byte) //按源数组建索引
+	mall := make(map[api.User]byte) //源+目所有元素建索引
 
-	var set []api.UserInfo //交集
+	var set []api.User //交集
 
 	//1.源数组建立map
 	for _, v := range *old {

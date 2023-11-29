@@ -2,18 +2,17 @@ package service
 
 import (
 	"fmt"
-	"github.com/xflash-panda/server-trojan/internal/pkg/api"
+	api "github.com/xflash-panda/server-client/pkg"
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/proxy/trojan"
 )
 
-func buildUser(tag string, userInfo []api.UserInfo) (users []*cProtocol.User) {
+func buildUser(tag string, userInfo []api.User) (users []*cProtocol.User) {
 	users = make([]*cProtocol.User, len(userInfo))
 	for i, user := range userInfo {
 		trojanAccount := &trojan.Account{
 			Password: user.UUID,
-			Flow:     "xtls-rprx-direct",
 		}
 		email := buildUserEmail(tag, user.ID, user.UUID)
 		users[i] = &cProtocol.User{

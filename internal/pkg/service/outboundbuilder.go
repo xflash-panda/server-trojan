@@ -3,13 +3,13 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/xflash-panda/server-trojan/internal/pkg/api"
+	api "github.com/xflash-panda/server-client/pkg"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
 )
 
-//OutboundBuilder build freedom outbund config for addoutbound
-func OutboundBuilder(nodeInfo *api.NodeInfo) (*core.OutboundHandlerConfig, error) {
+// OutboundBuilder build freedom outbund config for addoutbound
+func OutboundBuilder(nodeInfo *api.TrojanConfig) (*core.OutboundHandlerConfig, error) {
 	outboundDetourConfig := &conf.OutboundDetourConfig{}
 	outboundDetourConfig.Protocol = "freedom"
 	outboundDetourConfig.Tag = fmt.Sprintf("%s_%d", protocol, nodeInfo.ServerPort)

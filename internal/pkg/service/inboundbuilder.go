@@ -3,13 +3,13 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/xflash-panda/server-trojan/internal/pkg/api"
+	api "github.com/xflash-panda/server-client/pkg"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
 )
 
-//InboundBuilder build Inbound config for different protocol
-func InboundBuilder(config *Config, nodeInfo *api.NodeInfo) (*core.InboundHandlerConfig, error) {
+// InboundBuilder build Inbound config for different protocol
+func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHandlerConfig, error) {
 	var (
 		streamSetting     *conf.StreamConfig
 		jsonSetting       json.RawMessage
@@ -53,13 +53,13 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo) (*core.InboundHandle
 
 	if nodeInfo.Network == WS {
 		if nodeInfo.WebSocketConfig != nil {
-			streamSetting.WSSettings = nodeInfo.WebSocketConfig
+			streamSetting.WSSettings = (*conf.WebSocketConfig)(nodeInfo.WebSocketConfig)
 		} else {
 			streamSetting.WSSettings = &conf.WebSocketConfig{}
 		}
 	} else if nodeInfo.Network == GRPC {
 		if nodeInfo.GrpcConfig != nil {
-			streamSetting.GRPCConfig = nodeInfo.GrpcConfig
+			streamSetting.GRPCConfig = (*conf.GRPCConfig)(nodeInfo.GrpcConfig)
 		} else {
 			streamSetting.GRPCConfig = &conf.GRPCConfig{}
 		}
@@ -88,7 +88,7 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo) (*core.InboundHandle
 	return inboundDetourConfig.Build()
 }
 
-//getCertFile
+// getCertFile
 func getCertFile(certConfig *CertConfig) (certFile string, keyFile string, err error) {
 	if certConfig.CertFile == "" || certConfig.KeyFile == "" {
 		return "", "", fmt.Errorf("cert file path or key file path not exist")
