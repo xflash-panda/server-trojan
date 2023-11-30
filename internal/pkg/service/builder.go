@@ -21,15 +21,15 @@ type Config struct {
 }
 
 type Builder struct {
-	instance                *core.Instance
-	config                  *Config
-	nodeInfo                *api.TrojanConfig
-	inboundTag              string
-	userList                *[]api.User
-	getUserList             func(api.NodeId, api.NodeType) (*[]api.User, error)
-	reportUserTraffic       func(api.NodeId, api.NodeType, []*api.UserTraffic) error
-	nodeInfoMonitorPeriodic *task.Periodic
-	userReportPeriodic      *task.Periodic
+	instance                     *core.Instance
+	config                       *Config
+	nodeInfo                     *api.TrojanConfig
+	inboundTag                   string
+	userList                     *[]api.User
+	getUserList                  func(api.NodeId, api.NodeType) (*[]api.User, error)
+	reportUserTraffic            func(api.NodeId, api.NodeType, []*api.UserTraffic) error
+	getUserListMonitorPeriodic   *task.Periodic
+	trafficReportMonitorPeriodic *task.Periodic
 }
 
 // New return a builder service with default parameters.
@@ -103,21 +103,21 @@ func (b *Builder) Start() error {
 
 	b.userList = userList
 
-	b.nodeInfoMonitorPeriodic = &task.Periodic{
+	b.getUserListMonitorPeriodic = &task.Periodic{
 		Interval: b.config.SysInterval,
-		Execute:  b.nodeInfoMonitor,
+		Execute:  b.getUserListMonitor,
 	}
-	b.userReportPeriodic = &task.Periodic{
+	b.trafficReportMonitorPeriodic = &task.Periodic{
 		Interval: b.config.SysInterval,
-		Execute:  b.userInfoMonitor,
+		Execute:  b.trafficReportMonitor,
 	}
 	log.Infoln("Start monitor node status")
-	err = b.nodeInfoMonitorPeriodic.Start()
+	err = b.getUserListMonitorPeriodic.Start()
 	if err != nil {
 		return fmt.Errorf("node info periodic, start erorr:%s", err)
 	}
 	log.Infoln("Start report node status")
-	err = b.userReportPeriodic.Start()
+	err = b.trafficReportMonitorPeriodic.Start()
 	if err != nil {
 		return fmt.Errorf("user report periodic, start erorr:%s", err)
 	}
@@ -126,15 +126,15 @@ func (b *Builder) Start() error {
 
 // Close implement the Close() function of the service interface
 func (b *Builder) Close() error {
-	if b.nodeInfoMonitorPeriodic != nil {
-		err := b.nodeInfoMonitorPeriodic.Close()
+	if b.getUserListMonitorPeriodic != nil {
+		err := b.getUserListMonitorPeriodic.Close()
 		if err != nil {
 			return fmt.Errorf("node info periodic close failed: %s", err)
 		}
 	}
 
-	if b.nodeInfoMonitorPeriodic != nil {
-		err := b.userReportPeriodic.Close()
+	if b.trafficReportMonitorPeriodic != nil {
+		err := b.trafficReportMonitorPeriodic.Close()
 		if err != nil {
 			return fmt.Errorf("user report periodic close failed: %s", err)
 		}
@@ -194,7 +194,7 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 }
 
 // nodeInfoMonitor
-func (b *Builder) nodeInfoMonitor() (err error) {
+func (b *Builder) getUserListMonitor() (err error) {
 
 	// Update User
 	newUserList, err := b.getUserList(api.NodeId(b.config.NodeID), api.Trojan)
@@ -203,7 +203,7 @@ func (b *Builder) nodeInfoMonitor() (err error) {
 		return nil
 	}
 
-	deleted, added := compareUserList(b.userList, newUserList)
+	deleted, added := b.compareUserList(newUserList)
 	if len(deleted) > 0 {
 		deletedEmail := make([]string, len(deleted))
 		for i, u := range deleted {
@@ -230,7 +230,7 @@ func (b *Builder) nodeInfoMonitor() (err error) {
 }
 
 // userInfoMonitor
-func (b *Builder) userInfoMonitor() (err error) {
+func (b *Builder) trafficReportMonitor() (err error) {
 	// Get User traffic
 	userTraffic := make([]*api.UserTraffic, 0)
 	for _, user := range *b.userList {
@@ -257,38 +257,31 @@ func (b *Builder) userInfoMonitor() (err error) {
 	return nil
 }
 
-func compareUserList(old, new *[]api.User) (deleted, added []api.User) {
-	msrc := make(map[api.User]byte) //按源数组建索引
-	mall := make(map[api.User]byte) //源+目所有元素建索引
+// compareUserList
+func (b *Builder) compareUserList(newUsers *[]api.User) (deleted, added []api.User) {
+	// 使用map来标记旧用户列表中的每个用户
+	userMap := make(map[api.User]bool)
 
-	var set []api.User //交集
-
-	//1.源数组建立map
-	for _, v := range *old {
-		msrc[v] = 0
-		mall[v] = 0
+	// 标记旧用户列表中所有用户为已删除（暂时）
+	for _, user := range *b.userList {
+		userMap[user] = true
 	}
-	//2.目数组中，存不进去，即重复元素，所有存不进去的集合就是并集
-	for _, v := range *new {
-		l := len(mall)
-		mall[v] = 1
-		if l != len(mall) { //长度变化，即可以存
-			l = len(mall)
-		} else { //存不了，进并集
-			set = append(set, v)
+
+	// 遍历新用户列表
+	for _, newUser := range *newUsers {
+		if userMap[newUser] {
+			// 如果当前用户在旧列表中，标记为未删除（即用户仍在列表中）
+			userMap[newUser] = false
+		} else {
+			// 如果用户不在旧列表中，那么它是一个新增用户
+			added = append(added, newUser)
 		}
 	}
-	//3.遍历交集，在并集中找，找到就从并集中删，删完后就是补集（即并-交=所有变化的元素）
-	for _, v := range set {
-		delete(mall, v)
-	}
-	//4.此时，mall是补集，所有元素去源中找，找到就是删除的，找不到的必定能在目数组中找到，即新加的
-	for v := range mall {
-		_, exist := msrc[v]
-		if exist {
-			deleted = append(deleted, v)
-		} else {
-			added = append(added, v)
+
+	// 任何在userMap中仍标记为true的用户都是被删除的
+	for user, isDeleted := range userMap {
+		if isDeleted {
+			deleted = append(deleted, user)
 		}
 	}
 
