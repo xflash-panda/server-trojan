@@ -15,34 +15,35 @@ import (
 )
 
 type Config struct {
-	NodeID      int
-	SysInterval time.Duration
-	Cert        *CertConfig
+	NodeID                 int
+	FetchUsersInterval     time.Duration
+	ReportTrafficsInterval time.Duration
+	Cert                   *CertConfig
 }
 
 type Builder struct {
-	instance                     *core.Instance
-	config                       *Config
-	nodeInfo                     *api.TrojanConfig
-	inboundTag                   string
-	userList                     *[]api.User
-	getUserList                  func(api.NodeId, api.NodeType) (*[]api.User, error)
-	reportUserTraffic            func(api.NodeId, api.NodeType, []*api.UserTraffic) error
-	getUserListMonitorPeriodic   *task.Periodic
-	trafficReportMonitorPeriodic *task.Periodic
+	instance                      *core.Instance
+	config                        *Config
+	nodeInfo                      *api.TrojanConfig
+	inboundTag                    string
+	userList                      *[]api.User
+	fetchUsers                    func(api.NodeId, api.NodeType) (*[]api.User, error)
+	reportTraffics                func(api.NodeId, api.NodeType, []*api.UserTraffic) error
+	fetchUsersMonitorPeriodic     *task.Periodic
+	reportTrafficsMonitorPeriodic *task.Periodic
 }
 
 // New return a builder service with default parameters.
 func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig,
-	getUserList func(api.NodeId, api.NodeType) (*[]api.User, error), reportUserTraffic func(api.NodeId, api.NodeType, []*api.UserTraffic) error,
+	fetchUsers func(api.NodeId, api.NodeType) (*[]api.User, error), reportTraffics func(api.NodeId, api.NodeType, []*api.UserTraffic) error,
 ) *Builder {
 	builder := &Builder{
-		inboundTag:        inboundTag,
-		instance:          instance,
-		config:            config,
-		nodeInfo:          nodeInfo,
-		getUserList:       getUserList,
-		reportUserTraffic: reportUserTraffic,
+		inboundTag:     inboundTag,
+		instance:       instance,
+		config:         config,
+		nodeInfo:       nodeInfo,
+		fetchUsers:     fetchUsers,
+		reportTraffics: reportTraffics,
 	}
 	return builder
 }
@@ -92,7 +93,7 @@ func (b *Builder) addNewUser(userInfo []api.User) (err error) {
 // Start implement the Start() function of the service interface
 func (b *Builder) Start() error {
 	// Update user
-	userList, err := b.getUserList(api.NodeId(b.config.NodeID), api.Trojan)
+	userList, err := b.fetchUsers(api.NodeId(b.config.NodeID), api.Trojan)
 	if err != nil {
 		return err
 	}
@@ -103,40 +104,40 @@ func (b *Builder) Start() error {
 
 	b.userList = userList
 
-	b.getUserListMonitorPeriodic = &task.Periodic{
-		Interval: b.config.SysInterval,
-		Execute:  b.getUserListMonitor,
+	b.fetchUsersMonitorPeriodic = &task.Periodic{
+		Interval: b.config.FetchUsersInterval,
+		Execute:  b.fetchUsersMonitor,
 	}
-	b.trafficReportMonitorPeriodic = &task.Periodic{
-		Interval: b.config.SysInterval,
-		Execute:  b.trafficReportMonitor,
+	b.reportTrafficsMonitorPeriodic = &task.Periodic{
+		Interval: b.config.ReportTrafficsInterval,
+		Execute:  b.reportTrafficsMonitor,
 	}
-	log.Infoln("Start monitor node status")
-	err = b.getUserListMonitorPeriodic.Start()
+	log.Infoln("Start monitoring for user acquisition")
+	err = b.fetchUsersMonitorPeriodic.Start()
 	if err != nil {
-		return fmt.Errorf("node info periodic, start erorr:%s", err)
+		return fmt.Errorf("fetch users monitor periodic, start erorr:%s", err)
 	}
-	log.Infoln("Start report node status")
-	err = b.trafficReportMonitorPeriodic.Start()
+	log.Infoln("Start traffic reporting monitoring")
+	err = b.reportTrafficsMonitorPeriodic.Start()
 	if err != nil {
-		return fmt.Errorf("user report periodic, start erorr:%s", err)
+		return fmt.Errorf("start traffic monitor periodic, start erorr:%s", err)
 	}
 	return nil
 }
 
 // Close implement the Close() function of the service interface
 func (b *Builder) Close() error {
-	if b.getUserListMonitorPeriodic != nil {
-		err := b.getUserListMonitorPeriodic.Close()
+	if b.fetchUsersMonitorPeriodic != nil {
+		err := b.fetchUsersMonitorPeriodic.Close()
 		if err != nil {
-			return fmt.Errorf("node info periodic close failed: %s", err)
+			return fmt.Errorf("fetch users monitor periodic close failed: %s", err)
 		}
 	}
 
-	if b.trafficReportMonitorPeriodic != nil {
-		err := b.trafficReportMonitorPeriodic.Close()
+	if b.reportTrafficsMonitorPeriodic != nil {
+		err := b.reportTrafficsMonitorPeriodic.Close()
 		if err != nil {
-			return fmt.Errorf("user report periodic close failed: %s", err)
+			return fmt.Errorf("report  traffics monitor periodic close failed: %s", err)
 		}
 	}
 	return nil
@@ -194,10 +195,10 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 }
 
 // nodeInfoMonitor
-func (b *Builder) getUserListMonitor() (err error) {
+func (b *Builder) fetchUsersMonitor() (err error) {
 
 	// Update User
-	newUserList, err := b.getUserList(api.NodeId(b.config.NodeID), api.Trojan)
+	newUserList, err := b.fetchUsers(api.NodeId(b.config.NodeID), api.Trojan)
 	if err != nil {
 		log.Errorln(err)
 		return nil
@@ -230,7 +231,7 @@ func (b *Builder) getUserListMonitor() (err error) {
 }
 
 // userInfoMonitor
-func (b *Builder) trafficReportMonitor() (err error) {
+func (b *Builder) reportTrafficsMonitor() (err error) {
 	// Get User traffic
 	userTraffic := make([]*api.UserTraffic, 0)
 	for _, user := range *b.userList {
@@ -247,7 +248,7 @@ func (b *Builder) trafficReportMonitor() (err error) {
 	}
 	log.Infof("%d user traffic needs to be reported", len(userTraffic))
 	if len(userTraffic) > 0 {
-		err = b.reportUserTraffic(api.NodeId(b.config.NodeID), api.Trojan, userTraffic)
+		err = b.reportTraffics(api.NodeId(b.config.NodeID), api.Trojan, userTraffic)
 		if err != nil {
 			log.Errorln(err)
 			return nil
