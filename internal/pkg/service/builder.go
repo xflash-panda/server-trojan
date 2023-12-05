@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	pb "github.com/xflash-panda/server-agent-proto/pkg"
 	api "github.com/xflash-panda/server-client/pkg"
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/task"
@@ -18,6 +19,7 @@ type Config struct {
 	NodeID                 int
 	FetchUsersInterval     time.Duration
 	ReportTrafficsInterval time.Duration
+	HeartBeatInterval      time.Duration
 	Cert                   *CertConfig
 }
 
@@ -27,23 +29,20 @@ type Builder struct {
 	nodeInfo                      *api.TrojanConfig
 	inboundTag                    string
 	userList                      *[]api.User
-	fetchUsers                    func(api.NodeId, api.NodeType) (*[]api.User, error)
-	reportTraffics                func(api.NodeId, api.NodeType, []*api.UserTraffic) error
+	pbClient                      pb.AgentClient
 	fetchUsersMonitorPeriodic     *task.Periodic
 	reportTrafficsMonitorPeriodic *task.Periodic
+	heartbeatMonitorPeriodic      *task.Periodic
 }
 
 // New return a builder service with default parameters.
-func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig,
-	fetchUsers func(api.NodeId, api.NodeType) (*[]api.User, error), reportTraffics func(api.NodeId, api.NodeType, []*api.UserTraffic) error,
-) *Builder {
+func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, pbClient pb.AgentClient) *Builder {
 	builder := &Builder{
-		inboundTag:     inboundTag,
-		instance:       instance,
-		config:         config,
-		nodeInfo:       nodeInfo,
-		fetchUsers:     fetchUsers,
-		reportTraffics: reportTraffics,
+		inboundTag: inboundTag,
+		instance:   instance,
+		config:     config,
+		nodeInfo:   nodeInfo,
+		pbClient:   pbClient,
 	}
 	return builder
 }
@@ -93,17 +92,21 @@ func (b *Builder) addNewUser(userInfo []api.User) (err error) {
 // Start implement the Start() function of the service interface
 func (b *Builder) Start() error {
 	// Update user
-	userList, err := b.fetchUsers(api.NodeId(b.config.NodeID), api.Trojan)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancel()
+	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
 	if err != nil {
 		return err
 	}
-	err = b.addNewUser(*userList)
+	userList, err := api.UnmarshalUsers(r.GetRawData())
 	if err != nil {
 		return err
 	}
-
 	b.userList = userList
+	return nil
+}
 
+func (b *Builder) StartMonitor() error {
 	b.fetchUsersMonitorPeriodic = &task.Periodic{
 		Interval: b.config.FetchUsersInterval,
 		Execute:  b.fetchUsersMonitor,
@@ -112,17 +115,29 @@ func (b *Builder) Start() error {
 		Interval: b.config.ReportTrafficsInterval,
 		Execute:  b.reportTrafficsMonitor,
 	}
-	log.Infoln("Start monitoring for user acquisition")
-	err = b.fetchUsersMonitorPeriodic.Start()
+	b.heartbeatMonitorPeriodic = &task.Periodic{
+		Interval: b.config.HeartBeatInterval,
+		Execute:  b.heartbeatMonitor,
+	}
+
+	log.Infoln("Start fetch users Monitor")
+	err := b.fetchUsersMonitorPeriodic.Start()
 	if err != nil {
 		return fmt.Errorf("fetch users monitor periodic, start erorr:%s", err)
 	}
-	log.Infoln("Start traffic reporting monitoring")
+	log.Infoln("Start report traffics Monitor")
 	err = b.reportTrafficsMonitorPeriodic.Start()
 	if err != nil {
-		return fmt.Errorf("start traffic monitor periodic, start erorr:%s", err)
+		return fmt.Errorf("report traffics periodic, start erorr:%s", err)
+	}
+
+	log.Infoln("Start heartbeat task Monitor")
+	err = b.heartbeatMonitorPeriodic.Start()
+	if err != nil {
+		return fmt.Errorf("heartbeat periodic, start erorr:%s", err)
 	}
 	return nil
+
 }
 
 // Close implement the Close() function of the service interface
@@ -139,6 +154,9 @@ func (b *Builder) Close() error {
 		if err != nil {
 			return fmt.Errorf("report  traffics monitor periodic close failed: %s", err)
 		}
+	}
+	if err := b.heartbeatMonitorPeriodic.Close(); err != nil {
+		log.Warn("heartbeat task close error: ", err)
 	}
 	return nil
 }
@@ -194,14 +212,17 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 	return nil
 }
 
-// nodeInfoMonitor
 func (b *Builder) fetchUsersMonitor() (err error) {
-
 	// Update User
-	newUserList, err := b.fetchUsers(api.NodeId(b.config.NodeID), api.Trojan)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancel()
+	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
 	if err != nil {
-		log.Errorln(err)
-		return nil
+		return
+	}
+	newUserList, err := api.UnmarshalUsers(r.GetRawData())
+	if err != nil {
+		return
 	}
 
 	deleted, added := b.compareUserList(newUserList)
@@ -212,20 +233,17 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 		}
 		err := b.removeUsers(deletedEmail, b.inboundTag)
 		if err != nil {
-			log.Errorln(err)
-			return nil
+			log.Print(err)
 		}
 	}
 	if len(added) > 0 {
 		err = b.addNewUser(added)
 		if err != nil {
 			log.Errorln(err)
-			return nil
 		}
 
 	}
 	log.Infof("%d user deleted, %d user added", len(deleted), len(added))
-
 	b.userList = newUserList
 	return nil
 }
@@ -233,28 +251,62 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 // userInfoMonitor
 func (b *Builder) reportTrafficsMonitor() (err error) {
 	// Get User traffic
-	userTraffic := make([]*api.UserTraffic, 0)
+	userTraffics := make([]*api.UserTraffic, 0)
+	var i int
+	var trafficStats api.TrafficStats
+	trafficStats.UserIds = make([]int, 0)
+	trafficStats.UserRequests = make(map[int]int)
 	for _, user := range *b.userList {
-		email := buildUserEmail(b.inboundTag, user.ID, user.UUID)
-		up, down, count := b.getTraffic(email)
+		up, down, count := b.getTraffic(buildUserEmail(b.inboundTag, user.ID, user.UUID))
 		if up > 0 || down > 0 || count > 0 {
-			userTraffic = append(userTraffic, &api.UserTraffic{
+			userTraffics = append(userTraffics, &api.UserTraffic{
 				UID:      user.ID,
 				Upload:   uint64(up),
 				Download: uint64(down),
 				Count:    uint64(count),
 			})
 		}
-	}
-	log.Infof("%d user traffic needs to be reported", len(userTraffic))
-	if len(userTraffic) > 0 {
-		err = b.reportTraffics(api.NodeId(b.config.NodeID), api.Trojan, userTraffic)
-		if err != nil {
-			log.Errorln(err)
-			return nil
+		trafficStats.Count++
+		trafficStats.Requests += int(count)
+		if count > 0 {
+			trafficStats.UserIds = append(trafficStats.UserIds, user.ID)
+			trafficStats.UserRequests[user.ID] = int(count)
 		}
+		i++
+	}
+	log.Infof("%d user traffic needs to be reported", len(userTraffics))
+	trafficsRawData, err := api.MarshalTraffics(userTraffics)
+	if err != nil {
+		return
 	}
 
+	statsRawData, err := api.MarshalTrafficStats(&trafficStats)
+	if err != nil {
+		log.Errorln(err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancel()
+
+	_, err = b.pbClient.Submit(ctx, &pb.SubmitRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}, RawData: trafficsRawData, RawStats: statsRawData})
+	if err != nil {
+		log.Errorln(err)
+		return
+		//return err
+	}
+	return nil
+}
+
+func (b *Builder) heartbeatMonitor() error {
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancel()
+
+	log.Infoln("heartbeat...")
+	_, err := b.pbClient.Heartbeat(ctx, &pb.HeartbeatRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
+	if err != nil {
+		log.Errorln(err)
+	}
 	return nil
 }
 
