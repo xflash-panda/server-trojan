@@ -102,7 +102,13 @@ func (b *Builder) Start() error {
 	if err != nil {
 		return err
 	}
+
+	err = b.addNewUser(*userList)
+	if err != nil {
+		return err
+	}
 	b.userList = userList
+
 	return nil
 }
 
@@ -266,9 +272,10 @@ func (b *Builder) reportTrafficsMonitor() (err error) {
 				Count:    uint64(count),
 			})
 		}
-		trafficStats.Count++
-		trafficStats.Requests += int(count)
+
 		if count > 0 {
+			trafficStats.Count++
+			trafficStats.Requests += int(count)
 			trafficStats.UserIds = append(trafficStats.UserIds, user.ID)
 			trafficStats.UserRequests[user.ID] = int(count)
 		}
