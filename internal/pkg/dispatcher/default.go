@@ -157,6 +157,10 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
 
 	if user != nil && len(user.Email) > 0 {
 		p := d.policy.ForLevel(user.Level)
+		countName := "user>>>" + user.Email + ">>>request>>>count"
+		if c, _ := stats.GetOrRegisterCounter(d.stats, countName); c != nil {
+			c.Add(1)
+		}
 		if p.Stats.UserUplink {
 			name := "user>>>" + user.Email + ">>>traffic>>>uplink"
 			if c, _ := stats.GetOrRegisterCounter(d.stats, name); c != nil {
