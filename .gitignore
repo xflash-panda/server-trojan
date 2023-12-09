@@ -22,4 +22,4 @@
 /vendor/
 /Godeps/
 
-cmd/server/server
+cmd/server-agent/server-agent

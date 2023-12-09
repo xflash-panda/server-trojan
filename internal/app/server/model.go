@@ -1,5 +1,11 @@
 package server
 
+const (
+	LogLevelDebug = "debug"
+	LogLevelError = "error"
+	LogLevelInfo  = "info"
+)
+
 type ConnectionConfig struct {
 	Handshake    uint32 `mapstructure:"handshake"`
 	ConnIdle     uint32 `mapstructure:"connIdle"`
