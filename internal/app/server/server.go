@@ -78,6 +78,11 @@ func (s *Server) loadCore(inboundConfig *core.InboundHandlerConfig, outboundConf
 	//Log Config
 	logConfig := &conf.LogConfig{}
 	logConfig.LogLevel = s.config.LogLevel
+	if s.config.LogLevel != LogLevelDebug {
+		logConfig.AccessLog = "none"
+		logConfig.ErrorLog = "none"
+		logConfig.DNSLog = false
+	}
 	pbLogConfig := logConfig.Build()
 
 	//DNS Config
