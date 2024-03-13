@@ -5,8 +5,8 @@ go 1.21.4
 require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/xflash-panda/server-agent-proto v0.0.0-20231127152041-b5a40073f8e4
-	github.com/xflash-panda/server-client v0.0.8
+	github.com/xflash-panda/server-agent-proto v0.0.2
+	github.com/xflash-panda/server-client v0.0.10
 	github.com/xtls/xray-core v1.8.6
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0

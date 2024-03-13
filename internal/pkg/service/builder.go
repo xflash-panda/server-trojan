@@ -33,6 +33,7 @@ type Builder struct {
 	fetchUsersMonitorPeriodic     *task.Periodic
 	reportTrafficsMonitorPeriodic *task.Periodic
 	heartbeatMonitorPeriodic      *task.Periodic
+	lastUsersHash                 string
 }
 
 // New return a builder service with default parameters.
@@ -222,11 +223,16 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 	// Update User
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
+	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}, Hash: &b.lastUsersHash})
 	if err != nil {
 		log.Errorln(err)
 		return nil
 	}
+	if r.GetStatus() == pb.ChangeStatus_NOT_CHANGED {
+		log.Infoln("users not modified")
+		return nil
+	}
+	b.lastUsersHash = r.GetHash()
 	newUserList, err := api.UnmarshalUsers(r.GetRawData())
 	if err != nil {
 		log.Errorln(err)

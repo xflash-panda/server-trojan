@@ -180,10 +180,10 @@ github.com/vishvananda/netlink v1.2.1-beta.2.0.20230316163032-ced5aaba43e3 h1:tk
 github.com/vishvananda/netlink v1.2.1-beta.2.0.20230316163032-ced5aaba43e3/go.mod h1:cAAsePK2e15YDAMJNyOpGYEWNe4sIghTY7gpz4cX/Ik=
 github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae h1:4hwBBUfQCFe3Cym0ZtKyq7L16eZUtYKs+BaHDN6mAns=
 github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
-github.com/xflash-panda/server-agent-proto v0.0.0-20231127152041-b5a40073f8e4 h1:S7IvyP/IyK1U7+uyNa/KjgE0+j6XUoLg3uraCU5MXvw=
-github.com/xflash-panda/server-agent-proto v0.0.0-20231127152041-b5a40073f8e4/go.mod h1:ViHWH8zOD5ma6oOAzX+yBTjvymkNtzOQd9Bk9xhduoM=
-github.com/xflash-panda/server-client v0.0.8 h1:0qrKm20Jl00aRrWnQ4iH8NR6KnY5828QDSIiyiKUAa4=
-github.com/xflash-panda/server-client v0.0.8/go.mod h1:2DwmbepHnwh96L8fKIQTIdIJ8ID6xwrmhbnda6itUmg=
+github.com/xflash-panda/server-agent-proto v0.0.2 h1:OMkYnpQg/xQFuC7/3IbGqpXD9+QOmerlRmH3xnR4SUE=
+github.com/xflash-panda/server-agent-proto v0.0.2/go.mod h1:ViHWH8zOD5ma6oOAzX+yBTjvymkNtzOQd9Bk9xhduoM=
+github.com/xflash-panda/server-client v0.0.10 h1:p8WJA907V73ALgJ2hhaUaSM00IMGRWkfK+7T6EY0IXw=
+github.com/xflash-panda/server-client v0.0.10/go.mod h1:2DwmbepHnwh96L8fKIQTIdIJ8ID6xwrmhbnda6itUmg=
 github.com/xtls/reality v0.0.0-20231112171332-de1173cf2b19 h1:capMfFYRgH9BCLd6A3Er/cH3A9Nz3CU2KwxwOQZIePI=
 github.com/xtls/reality v0.0.0-20231112171332-de1173cf2b19/go.mod h1:dm4y/1QwzjGaK17ofi0Vs6NpKAHegZky8qk6J2JJZAE=
 github.com/xtls/xray-core v1.8.6 h1:tr3nk/fZnFfCsmgZv7B3RC72N5qUC88oMGVLlybDey8=
