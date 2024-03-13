@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	api "github.com/xflash-panda/server-client/pkg"
@@ -200,7 +201,11 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 	// Update User
 	newUserList, err := b.fetchUsers(api.NodeId(b.config.NodeID), api.Trojan)
 	if err != nil {
-		log.Errorln(err)
+		if errors.Is(err, api.ErrorUserNotModified) {
+			log.Infoln(err)
+		} else {
+			log.Errorln(err)
+		}
 		return nil
 	}
 

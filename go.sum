@@ -180,8 +180,8 @@ github.com/vishvananda/netlink v1.2.1-beta.2.0.20230316163032-ced5aaba43e3 h1:tk
 github.com/vishvananda/netlink v1.2.1-beta.2.0.20230316163032-ced5aaba43e3/go.mod h1:cAAsePK2e15YDAMJNyOpGYEWNe4sIghTY7gpz4cX/Ik=
 github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae h1:4hwBBUfQCFe3Cym0ZtKyq7L16eZUtYKs+BaHDN6mAns=
 github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
-github.com/xflash-panda/server-client v0.0.8 h1:0qrKm20Jl00aRrWnQ4iH8NR6KnY5828QDSIiyiKUAa4=
-github.com/xflash-panda/server-client v0.0.8/go.mod h1:2DwmbepHnwh96L8fKIQTIdIJ8ID6xwrmhbnda6itUmg=
+github.com/xflash-panda/server-client v0.0.9 h1:fSDcVA93aLfR52VHCaMOctacs7ZMkSfZS5VizQCfCt0=
+github.com/xflash-panda/server-client v0.0.9/go.mod h1:2DwmbepHnwh96L8fKIQTIdIJ8ID6xwrmhbnda6itUmg=
 github.com/xtls/reality v0.0.0-20231112171332-de1173cf2b19 h1:capMfFYRgH9BCLd6A3Er/cH3A9Nz3CU2KwxwOQZIePI=
 github.com/xtls/reality v0.0.0-20231112171332-de1173cf2b19/go.mod h1:dm4y/1QwzjGaK17ofi0Vs6NpKAHegZky8qk6J2JJZAE=
 github.com/xtls/xray-core v1.8.6 h1:tr3nk/fZnFfCsmgZv7B3RC72N5qUC88oMGVLlybDey8=
