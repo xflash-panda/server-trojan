@@ -104,7 +104,7 @@ func (s *Server) loadCore(inboundConfig *core.InboundHandlerConfig, outboundConf
 
 	//Routing config
 	routerConfig := &conf.RouterConfig{}
-	pbRouteConfig, err := routerConfig.Build()
+	pbRouteConfig, _ := routerConfig.Build()
 
 	//InboundConfig
 	inboundConfigs := make([]*core.InboundHandlerConfig, 1)
@@ -153,7 +153,7 @@ func (s *Server) Close() {
 	defer s.access.Unlock()
 	err := s.service.Close()
 	if err != nil {
-		log.Fatal("server close failed: %s", err)
+		log.Fatalf("server close failed: %s", err.Error())
 	}
 	log.Infoln("server close")
 }

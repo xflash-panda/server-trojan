@@ -31,9 +31,7 @@ func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHa
 	}
 	inboundDetourConfig.SniffingConfig = sniffingConfig
 
-	var setting *conf.TrojanServerConfig
-	setting = &conf.TrojanServerConfig{}
-
+	var setting *conf.TrojanServerConfig = &conf.TrojanServerConfig{}
 	jsonSetting, err := json.Marshal(setting)
 	if err != nil {
 		return nil, fmt.Errorf("marshal setting %s config fialed: %s", protocol, err)

@@ -79,9 +79,7 @@ func (b *Builder) addUsers(users []*cProtocol.User, tag string) error {
 
 // addNewUser
 func (b *Builder) addNewUser(userInfo []api.User) (err error) {
-	users := make([]*cProtocol.User, 0)
-	users = buildUser(b.inboundTag, userInfo)
-
+	users := buildUser(b.inboundTag, userInfo)
 	err = b.addUsers(users, b.inboundTag)
 	if err != nil {
 		return err

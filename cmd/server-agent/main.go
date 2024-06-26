@@ -21,7 +21,7 @@ import (
 
 const (
 	Name      = "trojan-agent-node"
-	Version   = "0.0.6"
+	Version   = "0.0.7"
 	CopyRight = "XFLASH-PANDA@2021"
 )
 
@@ -168,7 +168,7 @@ func main() {
 			runtime.GC()
 			{
 				osSignals := make(chan os.Signal, 1)
-				signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
+				signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
 				<-osSignals
 			}
 			return nil
