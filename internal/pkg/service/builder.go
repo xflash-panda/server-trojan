@@ -3,16 +3,18 @@ package service
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"time"
+
 	pb "github.com/xflash-panda/server-agent-proto/pkg"
 	api "github.com/xflash-panda/server-client/pkg"
+
+	log "github.com/sirupsen/logrus"
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/task"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/inbound"
 	"github.com/xtls/xray-core/features/stats"
 	"github.com/xtls/xray-core/proxy"
-	"time"
 )
 
 type Config struct {
@@ -142,7 +144,6 @@ func (b *Builder) StartMonitor() error {
 		return fmt.Errorf("heartbeat periodic, start erorr:%s", err)
 	}
 	return nil
-
 }
 
 // Close implement the Close() function of the service interface
@@ -189,7 +190,6 @@ func (b *Builder) getTraffic(email string) (up int64, down int64, count int64) {
 	}
 
 	return up, down, count
-
 }
 
 // removeUsers

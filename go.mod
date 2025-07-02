@@ -1,6 +1,6 @@
 module github.com/xflash-panda/server-trojan
 
-go 1.21.4
+go 1.23.10
 
 require (
 	github.com/sirupsen/logrus v1.9.3

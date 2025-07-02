@@ -3,19 +3,21 @@ package server
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"sync"
+	"time"
+
 	pb "github.com/xflash-panda/server-agent-proto/pkg"
 	api "github.com/xflash-panda/server-client/pkg"
 	_ "github.com/xflash-panda/server-trojan/internal/pkg/dep"
 	"github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
+
+	log "github.com/sirupsen/logrus"
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/app/stats"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
-	"sync"
-	"time"
 )
 
 type Config struct {
@@ -88,7 +90,7 @@ func (s *Server) Start(agentClient pb.AgentClient) {
 }
 
 func (s *Server) loadCore(inboundConfig *core.InboundHandlerConfig, outboundConfig *core.OutboundHandlerConfig) (*core.Instance, error) {
-	//Log Config
+	// Log Config
 	logConfig := &conf.LogConfig{}
 	logConfig.LogLevel = s.config.LogLevel
 	if s.config.LogLevel != LogLevelDebug {
@@ -98,23 +100,23 @@ func (s *Server) loadCore(inboundConfig *core.InboundHandlerConfig, outboundConf
 	}
 	pbLogConfig := logConfig.Build()
 
-	//DNS Config
+	// DNS Config
 	dnsConfig := &conf.DNSConfig{}
 	pbDnsConfig, _ := dnsConfig.Build()
 
-	//Routing config
+	// Routing config
 	routerConfig := &conf.RouterConfig{}
 	pbRouteConfig, _ := routerConfig.Build()
 
-	//InboundConfig
+	// InboundConfig
 	inboundConfigs := make([]*core.InboundHandlerConfig, 1)
 	inboundConfigs[0] = inboundConfig
 
-	//OutBound config
+	// OutBound config
 	outBoundConfigs := make([]*core.OutboundHandlerConfig, 1)
 	outBoundConfigs[0] = outboundConfig
 
-	//PolicyConfig
+	// PolicyConfig
 	policyConfig := &conf.PolicyConfig{}
 	pbPolicy := &conf.Policy{
 		StatsUserUplink:   true,

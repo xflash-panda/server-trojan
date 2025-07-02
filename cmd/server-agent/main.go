@@ -2,21 +2,23 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
-	pb "github.com/xflash-panda/server-agent-proto/pkg"
-	"github.com/xflash-panda/server-trojan/internal/app/server"
-	"github.com/xflash-panda/server-trojan/internal/pkg/service"
-	"github.com/xtls/xray-core/core"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/keepalive"
 	"io"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
 	"time"
+
+	pb "github.com/xflash-panda/server-agent-proto/pkg"
+	"github.com/xflash-panda/server-trojan/internal/app/server"
+	"github.com/xflash-panda/server-trojan/internal/pkg/service"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
+	"github.com/xtls/xray-core/core"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 const (
