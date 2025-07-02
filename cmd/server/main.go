@@ -2,18 +2,20 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
-	api "github.com/xflash-panda/server-client/pkg"
-	"github.com/xflash-panda/server-trojan/internal/app/server"
-	"github.com/xflash-panda/server-trojan/internal/pkg/service"
-	"github.com/xtls/xray-core/core"
 	"io"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
 	"time"
+
+	api "github.com/xflash-panda/server-client/pkg"
+	"github.com/xflash-panda/server-trojan/internal/app/server"
+	"github.com/xflash-panda/server-trojan/internal/pkg/service"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
+	"github.com/xtls/xray-core/core"
 )
 
 const (

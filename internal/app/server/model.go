@@ -14,12 +14,10 @@ type ConnectionConfig struct {
 	BufferSize   int32  `mapstructure:"bufferSize"`
 }
 
-var (
-	defaultConnectionConfig *ConnectionConfig = &ConnectionConfig{
-		Handshake:    4,
-		ConnIdle:     30,
-		UplinkOnly:   2,
-		DownlinkOnly: 4,
-		BufferSize:   64,
-	}
-)
+var defaultConnectionConfig *ConnectionConfig = &ConnectionConfig{
+	Handshake:    4,
+	ConnIdle:     30,
+	UplinkOnly:   2,
+	DownlinkOnly: 4,
+	BufferSize:   64,
+}

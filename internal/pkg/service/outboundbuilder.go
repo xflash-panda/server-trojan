@@ -3,7 +3,9 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+
 	api "github.com/xflash-panda/server-client/pkg"
+
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
 )
@@ -14,7 +16,7 @@ func OutboundBuilder(nodeInfo *api.TrojanConfig) (*core.OutboundHandlerConfig, e
 	outboundDetourConfig.Protocol = "freedom"
 	outboundDetourConfig.Tag = fmt.Sprintf("%s_%d", protocol, nodeInfo.ServerPort)
 	// Freedom Protocol setting
-	var domainStrategy = "Asis"
+	domainStrategy := "Asis"
 	proxySetting := &conf.FreedomConfig{
 		DomainStrategy: domainStrategy,
 	}

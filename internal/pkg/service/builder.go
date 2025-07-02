@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"time"
+
 	api "github.com/xflash-panda/server-client/pkg"
+
+	log "github.com/sirupsen/logrus"
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/task"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/inbound"
 	"github.com/xtls/xray-core/features/stats"
 	"github.com/xtls/xray-core/proxy"
-	"time"
 )
 
 type Config struct {
@@ -165,7 +167,6 @@ func (b *Builder) getTraffic(email string) (up int64, down int64, count int64) {
 	}
 
 	return up, down, count
-
 }
 
 // removeUsers
@@ -195,7 +196,6 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 
 // nodeInfoMonitor
 func (b *Builder) fetchUsersMonitor() (err error) {
-
 	// Update User
 	newUserList, err := b.fetchUsers(api.NodeId(b.config.NodeID), api.Trojan)
 	if err != nil {
