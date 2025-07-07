@@ -155,7 +155,7 @@ func (s *Server) Close() {
 	defer s.access.Unlock()
 	err := s.service.Close()
 	if err != nil {
-		log.Fatalf("server close failed: %s", err.Error())
+		log.Fatalf("server close failed: %s", err)
 	}
 	log.Infoln("server close")
 }

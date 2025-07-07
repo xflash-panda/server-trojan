@@ -2,7 +2,6 @@ package dep
 
 import (
 	// Required features. Can't remove unless there is replacements.
-	// _ "github.com/xtls/xray-core/app/dispatcher"
 	_ "github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
 
 	// Default commander and all its services. This is an optional feature.
@@ -42,7 +41,7 @@ import (
 	_ "github.com/xtls/xray-core/proxy/vmess/inbound"
 	_ "github.com/xtls/xray-core/proxy/vmess/outbound"
 	// Transports
-	_ "github.com/xtls/xray-core/transport/internet/domainsocket"
+	// _ "github.com/xtls/xray-core/transport/internet/domainsocket"
 	// Transport headers
 	_ "github.com/xtls/xray-core/transport/internet/headers/http"
 	_ "github.com/xtls/xray-core/transport/internet/headers/noop"
@@ -51,9 +50,7 @@ import (
 	_ "github.com/xtls/xray-core/transport/internet/headers/utp"
 	_ "github.com/xtls/xray-core/transport/internet/headers/wechat"
 	_ "github.com/xtls/xray-core/transport/internet/headers/wireguard"
-	_ "github.com/xtls/xray-core/transport/internet/http"
 	_ "github.com/xtls/xray-core/transport/internet/kcp"
-	_ "github.com/xtls/xray-core/transport/internet/quic"
 	_ "github.com/xtls/xray-core/transport/internet/reality"
 	_ "github.com/xtls/xray-core/transport/internet/tcp"
 	_ "github.com/xtls/xray-core/transport/internet/tls"
