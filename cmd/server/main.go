@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"runtime"
@@ -14,28 +13,15 @@ import (
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	cli "github.com/urfave/cli/v2"
 	"github.com/xtls/xray-core/core"
 )
 
 const (
 	Name      = "trojan-node"
-	Version   = "0.1.20"
+	Version   = "0.1.21"
 	CopyRight = "XFLASH-PANDA@2021"
 )
-
-func init() {
-	cli.VersionFlag = &cli.BoolFlag{
-		Name:    "version",
-		Aliases: []string{"V"},
-		Usage:   "print only the version",
-	}
-	cli.ErrWriter = io.Discard
-
-	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Printf("version=%s xray.version=%s\n", Version, core.Version())
-	}
-}
 
 func main() {
 	var config server.Config
@@ -151,6 +137,20 @@ func main() {
 				<-osSignals
 			}
 			return nil
+		},
+	}
+
+	// 在 cli/v2 中，版本信息会自动显示，如果需要自定义版本输出，可以在 Before 函数中处理
+	// 或者创建一个自定义的版本命令
+	app.Commands = []*cli.Command{
+		{
+			Name:    "version",
+			Aliases: []string{"v"},
+			Usage:   "Show version information",
+			Action: func(c *cli.Context) error {
+				fmt.Printf("version=%s xray.version=%s\n", Version, core.Version())
+				return nil
+			},
 		},
 	}
 

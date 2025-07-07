@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package xflash.server.trojan.app.dispatcher;
-option csharp_namespace = "xflash.server.trojan.App.Dispatcher";
-option go_package = "github.com/xflash-panda/server-trojan/app/dispatcher";
-option java_package = "com.xflash.server.trojan.app.dispatcher";
+package xflash.server.trojan.dispatcher;
+option csharp_namespace = "xflash.server.trojan.dispatcher";
+option go_package = "github.com/xflash-panda/server-trojan/internal/pkg/dispatcher";
+option java_package = "com.xflash.server.trojan.dispatcher";
 option java_multiple_files = true;
 
 message SessionConfig {

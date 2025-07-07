@@ -54,15 +54,21 @@ func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHa
 
 	if nodeInfo.Network == WS {
 		if nodeInfo.WebSocketConfig != nil {
-			streamSetting.WSSettings = (*conf.WebSocketConfig)(nodeInfo.WebSocketConfig)
+			wsConfig := &conf.WebSocketConfig{
+				Path: nodeInfo.WebSocketConfig.Path,
+			}
+			streamSetting.WSSettings = wsConfig
 		} else {
 			streamSetting.WSSettings = &conf.WebSocketConfig{}
 		}
 	} else if nodeInfo.Network == GRPC {
 		if nodeInfo.GrpcConfig != nil {
-			streamSetting.GRPCConfig = (*conf.GRPCConfig)(nodeInfo.GrpcConfig)
+			grpcConfig := &conf.GRPCConfig{
+				ServiceName: nodeInfo.GrpcConfig.ServiceName,
+			}
+			streamSetting.GRPCSettings = grpcConfig
 		} else {
-			streamSetting.GRPCConfig = &conf.GRPCConfig{}
+			streamSetting.GRPCSettings = &conf.GRPCConfig{}
 		}
 	}
 
