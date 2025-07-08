@@ -1,61 +1,26 @@
 package dep
 
 import (
-	// Required features. Can't remove unless there is replacements.
-	_ "github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
-
-	// Default commander and all its services. This is an optional feature.
-	_ "github.com/xtls/xray-core/app/commander"
-	// Other optional features.
-	_ "github.com/xtls/xray-core/app/dns"
+	// 核心应用功能
 	_ "github.com/xtls/xray-core/app/log"
-	_ "github.com/xtls/xray-core/app/log/command"
 	_ "github.com/xtls/xray-core/app/metrics"
 	_ "github.com/xtls/xray-core/app/policy"
-	_ "github.com/xtls/xray-core/app/proxyman/command"
 	_ "github.com/xtls/xray-core/app/proxyman/inbound"
 	_ "github.com/xtls/xray-core/app/proxyman/outbound"
-	_ "github.com/xtls/xray-core/app/reverse"
 	_ "github.com/xtls/xray-core/app/router"
 	_ "github.com/xtls/xray-core/app/stats"
 	_ "github.com/xtls/xray-core/app/stats/command"
 
-	// Commands
-	_ "github.com/xtls/xray-core/main/commands/all"
-	// Load config from file or http(s)
-	_ "github.com/xtls/xray-core/main/confloader/external"
-	// JSON & TOML & YAML
+	// 配置加载
 	_ "github.com/xtls/xray-core/main/json"
-	_ "github.com/xtls/xray-core/main/toml"
-	_ "github.com/xtls/xray-core/main/yaml"
 
-	// Inbound and outbound proxies.
-	_ "github.com/xtls/xray-core/proxy/blackhole"
-	_ "github.com/xtls/xray-core/proxy/dns"
-	_ "github.com/xtls/xray-core/proxy/dokodemo"
+	// 代理协议 - 只保留必要的
 	_ "github.com/xtls/xray-core/proxy/freedom"
-	_ "github.com/xtls/xray-core/proxy/http"
-	_ "github.com/xtls/xray-core/proxy/shadowsocks"
-	_ "github.com/xtls/xray-core/proxy/socks"
 	_ "github.com/xtls/xray-core/proxy/trojan"
-	_ "github.com/xtls/xray-core/proxy/vless/inbound"
-	_ "github.com/xtls/xray-core/proxy/vless/outbound"
-	_ "github.com/xtls/xray-core/proxy/vmess/inbound"
-	_ "github.com/xtls/xray-core/proxy/vmess/outbound"
 
-	// Transports
-	// _ "github.com/xtls/xray-core/transport/internet/domainsocket"
-	// Transport headers
-	_ "github.com/xtls/xray-core/transport/internet/headers/http"
+	// 传输层 - 只保留必要的
 	_ "github.com/xtls/xray-core/transport/internet/headers/noop"
-	_ "github.com/xtls/xray-core/transport/internet/headers/srtp"
 	_ "github.com/xtls/xray-core/transport/internet/headers/tls"
-	_ "github.com/xtls/xray-core/transport/internet/headers/utp"
-	_ "github.com/xtls/xray-core/transport/internet/headers/wechat"
-	_ "github.com/xtls/xray-core/transport/internet/headers/wireguard"
-
-	_ "github.com/xtls/xray-core/transport/internet/kcp"
-	_ "github.com/xtls/xray-core/transport/internet/reality"
 	_ "github.com/xtls/xray-core/transport/internet/tcp"
 	_ "github.com/xtls/xray-core/transport/internet/tls"
 	_ "github.com/xtls/xray-core/transport/internet/udp"
