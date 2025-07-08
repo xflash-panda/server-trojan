@@ -10,7 +10,6 @@ import (
 	"github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/core"
-	"github.com/xtls/xray-core/features/dns"
 	"github.com/xtls/xray-core/features/outbound"
 	"github.com/xtls/xray-core/features/policy"
 	"github.com/xtls/xray-core/features/routing"
@@ -30,7 +29,7 @@ type DefaultDispatcher struct {
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		d := new(DefaultDispatcher)
-		if err := core.RequireFeatures(ctx, func(om outbound.Manager, pm policy.Manager, sm stats.Manager, dc dns.Client) error {
+		if err := core.RequireFeatures(ctx, func(om outbound.Manager, pm policy.Manager, sm stats.Manager) error {
 			return d.Init(config.(*Config), om, pm, sm)
 		}); err != nil {
 			return nil, err
@@ -147,24 +146,9 @@ func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.
 
 	routingLink := routing_session.AsRoutingContext(ctx)
 	inTag := routingLink.GetInboundTag()
-	isPickRoute := 0
-	if forcedOutboundTag := session.GetForcedOutboundTagFromContext(ctx); forcedOutboundTag != "" {
-		ctx = session.SetForcedOutboundTagToContext(ctx, "")
-		if h := d.ohm.GetHandler(forcedOutboundTag); h != nil {
-			isPickRoute = 1
-			errors.LogInfo(ctx, "taking platform initialized detour [", forcedOutboundTag, "] for [", destination, "]")
-			handler = h
-		} else {
-			errors.LogError(ctx, "non existing tag for platform initialized detour: ", forcedOutboundTag)
-			common.Close(link.Writer)
-			common.Interrupt(link.Reader)
-			return
-		}
-	}
 
-	if handler == nil {
-		handler = d.ohm.GetDefaultHandler()
-	}
+	// 删除强制出站逻辑，直接使用默认处理器
+	handler = d.ohm.GetDefaultHandler()
 
 	if handler == nil {
 		errors.LogInfo(ctx, "default outbound handler not exist")
@@ -178,8 +162,6 @@ func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.
 		if tag := handler.Tag(); tag != "" {
 			if inTag == "" {
 				accessMessage.Detour = tag
-			} else if isPickRoute == 1 {
-				accessMessage.Detour = inTag + " ==> " + tag
 			} else {
 				accessMessage.Detour = inTag + " >> " + tag
 			}
