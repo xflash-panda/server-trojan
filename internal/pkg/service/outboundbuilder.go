@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	C "github.com/apernet/hysteria/core/v2/server"
 	api "github.com/xflash-panda/server-client/pkg"
-
 	"github.com/xflash-panda/server-trojan/internal/pkg/proxy/freedom"
+
+	C "github.com/apernet/hysteria/core/v2/server"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
 )

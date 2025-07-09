@@ -5,11 +5,9 @@ import (
 	"time"
 
 	C "github.com/apernet/hysteria/core/v2/server"
-	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/buf"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/common/platform"
 	"github.com/xtls/xray-core/common/retry"
 	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/common/signal"
@@ -20,43 +18,13 @@ import (
 	"github.com/xtls/xray-core/transport/internet/stat"
 )
 
-var useSplice bool
-
-func init() {
-	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
-		h := new(Handler)
-		if err := h.Init(config.(*Config)); err != nil {
-			return nil, err
-		}
-		return h, nil
-	}))
-	const defaultFlagValue = "NOT_DEFINED_AT_ALL"
-	value := platform.NewEnvFlag(platform.UseFreedomSplice).GetValue(func() string { return defaultFlagValue })
-	switch value {
-	case defaultFlagValue, "auto", "enable":
-		useSplice = true
-	}
-}
-
-type Setting struct {
-	name string
-}
-
 // 定义Context key
 type contextKey string
 
 const PluggableOutboundKey contextKey = "freedom_pluggable_outbound"
 
 // Handler handles Freedom connections.
-type Handler struct {
-	config *Config
-}
-
-// Init initializes the Handler with necessary parameters.
-func (h *Handler) Init(config *Config) error {
-	h.config = config
-	return nil
-}
+type Handler struct{}
 
 // Process implements proxy.Outbound.
 func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer internet.Dialer) error {
@@ -162,7 +130,6 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	}
 
 	return nil
-
 }
 
 func NewPacketReader(conn net.Conn, UDPOverride net.Destination) buf.Reader {
@@ -227,7 +194,6 @@ func NewPacketWriter(conn net.Conn, h *Handler, ctx context.Context, UDPOverride
 			Context:           ctx,
 			UDPOverride:       UDPOverride,
 		}
-
 	}
 	return &buf.SequentialWriter{Writer: conn}
 }

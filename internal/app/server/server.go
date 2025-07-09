@@ -6,13 +6,13 @@ import (
 	"strings"
 	"sync"
 
-	C "github.com/apernet/hysteria/core/v2/server"
-	"github.com/apernet/hysteria/extras/v2/outbounds"
 	api "github.com/xflash-panda/server-client/pkg"
 	_ "github.com/xflash-panda/server-trojan/internal/pkg/dep"
 	"github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 
+	C "github.com/apernet/hysteria/core/v2/server"
+	"github.com/apernet/hysteria/extras/v2/outbounds"
 	log "github.com/sirupsen/logrus"
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/app/stats"

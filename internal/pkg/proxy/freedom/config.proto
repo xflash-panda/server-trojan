@@ -5,7 +5,3 @@ option csharp_namespace = "xflash.server.trojan.proxy.freedom";
 option go_package = "github.com/xflash-panda/server-trojan/internal/pkg/proxy/freedom";
 option java_package = "com.xflash.server.trojan.proxy.freedom";
 option java_multiple_files = true;
-
-message Config {
-  uint32 user_level = 1;
-}

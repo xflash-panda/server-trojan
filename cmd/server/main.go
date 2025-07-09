@@ -8,12 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/spf13/viper"
 	api "github.com/xflash-panda/server-client/pkg"
 	"github.com/xflash-panda/server-trojan/internal/app/server"
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	cli "github.com/urfave/cli/v2"
 	"github.com/xtls/xray-core/core"
 )
