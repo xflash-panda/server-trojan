@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/viper"
 	api "github.com/xflash-panda/server-client/pkg"
 	"github.com/xflash-panda/server-trojan/internal/app/server"
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
@@ -28,6 +29,7 @@ func main() {
 	var apiConfig api.Config
 	var serviceConfig service.Config
 	var certConfig service.CertConfig
+	var extConfPath string
 
 	app := &cli.App{
 		Name:      Name,
@@ -48,6 +50,13 @@ func main() {
 				EnvVars:     []string{"X_PANDA_TROJAN_TOKEN", "TOKEN"},
 				Required:    true,
 				Destination: &apiConfig.Token,
+			},
+			&cli.StringFlag{
+				Name:        "ext_conf_file",
+				Usage:       "Extended profiles for ACL and Outbounds(.yaml format)",
+				EnvVars:     []string{"X_PANDA_TROJAN_EXT_CONF_FILE", "EXT_CONF_FILE"},
+				Required:    false,
+				Destination: &extConfPath,
 			},
 			&cli.StringFlag{
 				Name:        "cert_file",
@@ -127,8 +136,26 @@ func main() {
 				}()
 			}
 			serviceConfig.Cert = &certConfig
-			serv := server.New(&config, &apiConfig, &serviceConfig)
-			serv.Start()
+			var extConfig *server.ExtConfig
+			if extConfPath != "" {
+				log.Infof("ext config: %s", extConfPath)
+				viper.SetConfigFile(extConfPath)
+				if err := viper.ReadInConfig(); err != nil {
+					return fmt.Errorf("failed to read ext config: %w", err)
+				}
+
+				if err := viper.Unmarshal(&extConfig); err != nil {
+					return fmt.Errorf("failed to unmarshal ext config: %w", err)
+				}
+			}
+
+			serv, err := server.New(&config, &apiConfig, &serviceConfig, extConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create server: %w", err)
+			}
+			if err := serv.Start(); err != nil {
+				return fmt.Errorf("failed to start server: %w", err)
+			}
 			defer serv.Close()
 			runtime.GC()
 			{
@@ -140,8 +167,6 @@ func main() {
 		},
 	}
 
-	// 在 cli/v2 中，版本信息会自动显示，如果需要自定义版本输出，可以在 Before 函数中处理
-	// 或者创建一个自定义的版本命令
 	app.Commands = []*cli.Command{
 		{
 			Name:    "version",

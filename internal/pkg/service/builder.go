@@ -22,6 +22,7 @@ type Config struct {
 	FetchUsersInterval     time.Duration
 	ReportTrafficsInterval time.Duration
 	Cert                   *CertConfig
+	ExtConfPath            string
 }
 
 type Builder struct {

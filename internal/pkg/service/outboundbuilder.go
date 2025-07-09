@@ -1,31 +1,26 @@
 package service
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 
+	C "github.com/apernet/hysteria/core/v2/server"
 	api "github.com/xflash-panda/server-client/pkg"
 
+	"github.com/xflash-panda/server-trojan/internal/pkg/proxy/freedom"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
 )
 
 // OutboundBuilder build freedom outbund config for addoutbound
-func OutboundBuilder(nodeInfo *api.TrojanConfig) (*core.OutboundHandlerConfig, error) {
+func OutboundBuilder(ctx context.Context, nodeInfo *api.TrojanConfig, pOutbound C.Outbound) (*core.OutboundHandlerConfig, error) {
 	outboundDetourConfig := &conf.OutboundDetourConfig{}
 	outboundDetourConfig.Protocol = "freedom"
 	outboundDetourConfig.Tag = fmt.Sprintf("%s_%d", protocol, nodeInfo.ServerPort)
-	// Freedom Protocol setting
-	domainStrategy := "Asis"
-	proxySetting := &conf.FreedomConfig{
-		DomainStrategy: domainStrategy,
-	}
-	var setting json.RawMessage
-	setting, err := json.Marshal(proxySetting)
-	if err != nil {
-		return nil, fmt.Errorf("marshal proxy %s config fialed: %s", protocol, err)
-	}
-	outboundDetourConfig.Settings = &setting
 
+	// 使用传入的context创建带PluggableOutbound的context
+	freedom.WithPluggableOutbound(ctx, pOutbound)
+
+	// Freedom Protocol setting
 	return outboundDetourConfig.Build()
 }
