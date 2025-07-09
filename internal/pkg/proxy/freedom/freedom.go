@@ -2,6 +2,7 @@ package freedom
 
 import (
 	"context"
+	"time"
 
 	C "github.com/apernet/hysteria/core/v2/server"
 	"github.com/xtls/xray-core/common"
@@ -13,8 +14,6 @@ import (
 	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/common/signal"
 	"github.com/xtls/xray-core/common/task"
-	"github.com/xtls/xray-core/core"
-	"github.com/xtls/xray-core/features/policy"
 	"github.com/xtls/xray-core/features/stats"
 	"github.com/xtls/xray-core/transport"
 	"github.com/xtls/xray-core/transport/internet"
@@ -26,9 +25,7 @@ var useSplice bool
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		h := new(Handler)
-		if err := core.RequireFeatures(ctx, func(pm policy.Manager) error {
-			return h.Init(config.(*Config), pm)
-		}); err != nil {
+		if err := h.Init(config.(*Config)); err != nil {
 			return nil, err
 		}
 		return h, nil
@@ -52,24 +49,22 @@ const PluggableOutboundKey contextKey = "freedom_pluggable_outbound"
 
 // Handler handles Freedom connections.
 type Handler struct {
-	policyManager policy.Manager
-	config        *Config
+	config *Config
 }
 
 // Init initializes the Handler with necessary parameters.
-func (h *Handler) Init(config *Config, pm policy.Manager) error {
+func (h *Handler) Init(config *Config) error {
 	h.config = config
-	h.policyManager = pm
 	return nil
-}
-
-func (h *Handler) policy() policy.Session {
-	p := h.policyManager.ForLevel(h.config.UserLevel)
-	return p
 }
 
 // Process implements proxy.Outbound.
 func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer internet.Dialer) error {
+	po, ok := GetPluggableOutbound(ctx)
+	if !ok {
+		return errors.New("pluggable outbound not found")
+	}
+
 	outbounds := session.OutboundsFromContext(ctx)
 	ob := outbounds[len(outbounds)-1]
 	if !ob.Target.IsValid() {
@@ -88,7 +83,11 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	err := retry.ExponentialBackoff(5, 100).On(func() error {
 		dialDest := destination
 
-		rawConn, err := dialer.Dial(ctx, dialDest)
+		var rawConn net.Conn
+		var err error
+
+		rawConn, err = po.TCP(dialDest.NetAddr())
+
 		if err != nil {
 			return err
 		}
@@ -108,17 +107,23 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		newCtx, newCancel = context.WithCancel(context.Background())
 	}
 
-	plcy := h.policy()
+	// 使用默认超时设置
+	const (
+		defaultConnectionIdle = 300 * time.Second
+		defaultDownlinkOnly   = 5 * time.Second
+		defaultUplinkOnly     = 2 * time.Second
+	)
+
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, func() {
 		cancel()
 		if newCancel != nil {
 			newCancel()
 		}
-	}, plcy.Timeouts.ConnectionIdle)
+	}, defaultConnectionIdle)
 
 	requestDone := func() error {
-		defer timer.SetTimeout(plcy.Timeouts.DownlinkOnly)
+		defer timer.SetTimeout(defaultDownlinkOnly)
 
 		var writer buf.Writer
 		if destination.Network == net.Network_TCP {
@@ -135,7 +140,7 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	}
 
 	responseDone := func() error {
-		defer timer.SetTimeout(plcy.Timeouts.UplinkOnly)
+		defer timer.SetTimeout(defaultUplinkOnly)
 		var reader buf.Reader
 		if destination.Network == net.Network_TCP {
 			reader = buf.NewReader(conn)
