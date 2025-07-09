@@ -20,7 +20,7 @@ import (
 
 const (
 	Name      = "trojan-node"
-	Version   = "0.1.21"
+	Version   = "0.2.0"
 	CopyRight = "XFLASH-PANDA@2021"
 )
 
