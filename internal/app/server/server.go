@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	api "github.com/xflash-panda/server-client/pkg"
@@ -11,8 +10,6 @@ import (
 	"github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 
-	C "github.com/apernet/hysteria/core/v2/server"
-	"github.com/apernet/hysteria/extras/v2/outbounds"
 	log "github.com/sirupsen/logrus"
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/app/stats"
@@ -33,80 +30,14 @@ type Server struct {
 	apiConfig     *api.Config
 	serviceConfig *service.Config
 	Running       bool
-	pOutbound     C.Outbound
+	extFileBytes  []byte
 	ctx           context.Context
 }
 
-func buildOutboundFromExtConfig(extConfig *ExtConfig) (C.Outbound, error) {
-	var obs []outbounds.OutboundEntry
-	var uOb outbounds.PluggableOutbound
-
-	if len(extConfig.Outbounds) == 0 {
-		obs = []outbounds.OutboundEntry{{
-			Name:     "default",
-			Outbound: outbounds.NewDirectOutboundSimple(outbounds.DirectOutboundModeAuto),
-		}}
-	} else {
-		obs = make([]outbounds.OutboundEntry, len(extConfig.Outbounds))
-		for i, entry := range extConfig.Outbounds {
-			if entry.Name == "" {
-				return nil, fmt.Errorf("empty outbound name")
-			}
-			var ob outbounds.PluggableOutbound
-			var err error
-			switch strings.ToLower(entry.Type) {
-			case "direct":
-				ob, err = serverConfigOutboundDirectToOutbound(entry.Direct)
-			case "socks5":
-				ob, err = serverConfigOutboundSOCKS5ToOutbound(entry.SOCKS5)
-			case "http":
-				ob, err = serverConfigOutboundHTTPToOutbound(entry.HTTP)
-			default:
-				return nil, fmt.Errorf("unsupported outbound type")
-			}
-			if err != nil {
-				return nil, fmt.Errorf("failed to create outbound: %s", err)
-			}
-			obs[i] = outbounds.OutboundEntry{Name: entry.Name, Outbound: ob}
-		}
-
-	}
-	gLoader := &GeoLoader{
-		GeoIPFilename:   "",
-		GeoSiteFilename: "",
-		UpdateInterval:  geoDefaultUpdateInterval,
-		DownloadFunc:    geoDownloadFunc,
-		DownloadErrFunc: geoDownloadErrFunc,
-	}
-
-	if len(extConfig.ACL.Inline) > 0 {
-		aclOutbound, err := outbounds.NewACLEngineFromString(strings.Join(extConfig.ACL.Inline, "\n"), obs, gLoader)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create acl outbound: %s", err)
-		}
-		uOb = aclOutbound
-	} else {
-		uOb = obs[0].Outbound
-	}
-
-	return &outbounds.PluggableOutboundAdapter{PluggableOutbound: uOb}, nil
-}
-
-func New(config *Config, apiConfig *api.Config, serviceConfig *service.Config, extConfig *ExtConfig) (*Server, error) {
-	var pOutbound C.Outbound
-	var err error
-	if extConfig != nil {
-		pOutbound, err = buildOutboundFromExtConfig(extConfig)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		pOutbound = &outbounds.PluggableOutboundAdapter{PluggableOutbound: outbounds.NewDirectOutboundSimple(outbounds.DirectOutboundModeAuto)}
-	}
-
+func New(config *Config, apiConfig *api.Config, serviceConfig *service.Config, extFileBytes []byte) (*Server, error) {
 	// 创建全局context
 	ctx := context.Background()
-	return &Server{config: config, apiConfig: apiConfig, serviceConfig: serviceConfig, pOutbound: pOutbound, ctx: ctx}, nil
+	return &Server{config: config, apiConfig: apiConfig, serviceConfig: serviceConfig, extFileBytes: extFileBytes, ctx: ctx}, nil
 }
 
 func (s *Server) Start() error {
@@ -129,12 +60,12 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to build inbound config: %s", err)
 	}
 
-	outBoundConfig, err := service.OutboundBuilder(s.ctx, trojanConfig, s.pOutbound)
+	outBoundConfig, err := service.OutboundBuilder(s.ctx, trojanConfig, s.extFileBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build outbound config: %s", err)
 	}
 
-	instance, err := s.loadCore(inBoundConfig, outBoundConfig)
+	instance, err := s.loadCore(s.ctx, inBoundConfig, outBoundConfig)
 	if err != nil {
 		return fmt.Errorf("failed to load core: %s", err)
 	}
@@ -155,7 +86,7 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) loadCore(inboundConfig *core.InboundHandlerConfig, outboundConfig *core.OutboundHandlerConfig) (*core.Instance, error) {
+func (s *Server) loadCore(ctx context.Context, inboundConfig *core.InboundHandlerConfig, outboundConfig *core.OutboundHandlerConfig) (*core.Instance, error) {
 	// Log Config
 	logConfig := &conf.LogConfig{}
 	logConfig.LogLevel = s.config.LogLevel
@@ -200,8 +131,8 @@ func (s *Server) loadCore(inboundConfig *core.InboundHandlerConfig, outboundConf
 		Outbound: outBoundConfigs,
 		Inbound:  inboundConfigs,
 	}
-	// 使用NewWithContext替代New，传入全局context
-	instance, err := core.NewWithContext(s.ctx, pbCoreConfig)
+	// 使用传入的context替代s.ctx
+	instance, err := core.NewWithContext(ctx, pbCoreConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create instance: %s", err)
 	}

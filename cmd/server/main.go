@@ -13,14 +13,13 @@ import (
 	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	cli "github.com/urfave/cli/v2"
 	"github.com/xtls/xray-core/core"
 )
 
 const (
 	Name      = "trojan-node"
-	Version   = "0.2.0"
+	Version   = "0.2.0-dev"
 	CopyRight = "XFLASH-PANDA@2021"
 )
 
@@ -136,20 +135,18 @@ func main() {
 				}()
 			}
 			serviceConfig.Cert = &certConfig
-			var extConfig *server.ExtConfig
+			var extFileBytes []byte
 			if extConfPath != "" {
 				log.Infof("ext config: %s", extConfPath)
-				viper.SetConfigFile(extConfPath)
-				if err := viper.ReadInConfig(); err != nil {
-					return fmt.Errorf("failed to read ext config: %w", err)
-				}
-
-				if err := viper.Unmarshal(&extConfig); err != nil {
-					return fmt.Errorf("failed to unmarshal ext config: %w", err)
+				// 读取文件的二进制流
+				var err error
+				extFileBytes, err = os.ReadFile(extConfPath)
+				if err != nil {
+					return fmt.Errorf("failed to read file binary stream: %w", err)
 				}
 			}
 
-			serv, err := server.New(&config, &apiConfig, &serviceConfig, extConfig)
+			serv, err := server.New(&config, &apiConfig, &serviceConfig, extFileBytes)
 			if err != nil {
 				return fmt.Errorf("failed to create server: %w", err)
 			}

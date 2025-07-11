@@ -5,8 +5,9 @@ outbounds:
       mode: auto
 acl:
   inline:
-    - gpt(geosite:openai)
-    - gpt(geosite:sb)
-    - gpt(ip.gs)
-    - gpt(all)
-    - reject(geoip:au)
+    - reject(all)
+    # - gpt(geosite:openai)
+    # - gpt(geosite:sb)
+    # - gpt(ip.gs)
+    # - gpt(all)
+    # - reject(geoip:au)
