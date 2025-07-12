@@ -22,7 +22,7 @@ import (
 
 const (
 	Name      = "trojan-agent-node"
-	Version   = "0.0.8"
+	Version   = "0.0.9"
 	CopyRight = "XFLASH-PANDA@2021"
 )
 
@@ -30,6 +30,7 @@ func main() {
 	var config server.Config
 	var serviceConfig service.Config
 	var certConfig service.CertConfig
+	var extConfPath string
 
 	app := &cli.App{
 		Name:      Name,
@@ -52,11 +53,18 @@ func main() {
 				Destination: &config.AgentPort,
 			},
 			&cli.StringFlag{
+				Name:        "ext_conf_file",
+				Usage:       "Extended profiles for ACL and Outbounds(.yaml format)",
+				EnvVars:     []string{"X_PANDA_TROJAN_EXT_CONF_FILE", "EXT_CONF_FILE"},
+				Required:    false,
+				Destination: &extConfPath,
+			},
+			&cli.StringFlag{
 				Name:        "cert_file",
 				Usage:       "Cert file",
 				EnvVars:     []string{"X_PANDA_TROJAN_CERT_FILE", "CERT_FILE"},
 				Value:       "/root/.cert/server.crt",
-				Required:    true,
+				Required:    false,
 				DefaultText: "/root/.cert/server.crt",
 				Destination: &certConfig.CertFile,
 			},
@@ -65,7 +73,7 @@ func main() {
 				Usage:       "Key file",
 				EnvVars:     []string{"X_PANDA_TROJAN_KEY_FILE", "KEY_FILE"},
 				Value:       "/root/.cert/server.key",
-				Required:    true,
+				Required:    false,
 				DefaultText: "/root/.cert/server.key",
 				Destination: &certConfig.KeyFile,
 			},
@@ -139,7 +147,7 @@ func main() {
 			}
 			serviceConfig.Cert = &certConfig
 			agentAddr := fmt.Sprintf("%s:%d", config.AgentHost, config.AgentPort)
-			agentConn, err := grpc.Dial(agentAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithKeepaliveParams(
+			agentConn, err := grpc.NewClient(agentAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(
 				keepalive.ClientParameters{
 					Time:                30 * time.Second, // 每30秒发送一次keepalive探测
 					Timeout:             10 * time.Second, // 如果10秒内没有响应，则认为连接断开
@@ -150,8 +158,26 @@ func main() {
 			}
 			agentClient := pb.NewAgentClient(agentConn)
 			defer agentConn.Close()
-			serv := server.New(&config, &serviceConfig)
-			serv.Start(agentClient)
+
+			var extFileBytes []byte
+			if extConfPath != "" {
+				log.Infof("ext config: %s", extConfPath)
+				// 读取文件的二进制流
+				var err error
+				extFileBytes, err = os.ReadFile(extConfPath)
+				if err != nil {
+					return fmt.Errorf("failed to read file binary stream: %w", err)
+				}
+			}
+
+			serv, err := server.New(&config, &serviceConfig, extFileBytes)
+			if err != nil {
+				return fmt.Errorf("failed to create server: %w", err)
+			}
+			if err := serv.Start(agentClient); err != nil {
+				return fmt.Errorf("failed to start server: %w", err)
+			}
+
 			defer serv.Close()
 			runtime.GC()
 			{
@@ -163,8 +189,6 @@ func main() {
 		},
 	}
 
-	// 在 cli/v2 中，版本信息会自动显示，如果需要自定义版本输出，可以在 Before 函数中处理
-	// 或者创建一个自定义的版本命令
 	app.Commands = []*cli.Command{
 		{
 			Name:    "version",

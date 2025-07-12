@@ -1,0 +1,13 @@
+outbounds:
+  - name: gpt
+    type: direct
+    direct:
+      mode: auto
+acl:
+  inline:
+    - reject(all)
+    # - gpt(geosite:openai)
+    # - gpt(geosite:sb)
+    # - gpt(ip.gs)
+    # - gpt(all)
+    # - reject(geoip:au)

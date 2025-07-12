@@ -24,6 +24,7 @@ type Config struct {
 	ReportTrafficsInterval time.Duration
 	HeartBeatInterval      time.Duration
 	Cert                   *CertConfig
+	ExtConfPath            string
 }
 
 type Builder struct {

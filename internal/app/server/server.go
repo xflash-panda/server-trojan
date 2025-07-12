@@ -33,13 +33,16 @@ type Server struct {
 	config        *Config
 	serviceConfig *service.Config
 	Running       bool
+	extFileBytes  []byte
+	ctx           context.Context
 }
 
-func New(config *Config, serviceConfig *service.Config) *Server {
-	return &Server{config: config, serviceConfig: serviceConfig}
+func New(config *Config, serviceConfig *service.Config, extFileBytes []byte) (*Server, error) {
+	ctx := context.Background()
+	return &Server{config: config, serviceConfig: serviceConfig, extFileBytes: extFileBytes, ctx: ctx}, nil
 }
 
-func (s *Server) Start(agentClient pb.AgentClient) {
+func (s *Server) Start(agentClient pb.AgentClient) error {
 	s.access.Lock()
 	defer s.access.Unlock()
 	log.Infoln("server start")
@@ -48,48 +51,49 @@ func (s *Server) Start(agentClient pb.AgentClient) {
 
 	r, err := agentClient.Config(ctx, &pb.ConfigRequest{Params: &pb.CommonParams{NodeId: int32(s.serviceConfig.NodeID), NodeType: pb.NodeType_TROJAN}})
 	if err != nil {
-		panic(fmt.Errorf("get config eror: %v", err))
+		return fmt.Errorf("get config eror: %v", err)
 	}
 
 	trojanConfig, err := api.UnmarshalTrojanConfig(r.GetRawData())
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to unmarshal trojan config: %s", err)
 	}
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
-		panic(fmt.Errorf("failed to build inbound config: %s", err))
+		return fmt.Errorf("failed to build inbound config: %s", err)
 	}
 
-	outBoundConfig, err := service.OutboundBuilder(trojanConfig)
+	outBoundConfig, err := service.OutboundBuilder(ctx, trojanConfig, s.extFileBytes)
 	if err != nil {
-		panic(fmt.Errorf("failed to build outbound config: %s", err))
+		return fmt.Errorf("failed to build outbound config: %s", err)
 	}
 
-	instance, err := s.loadCore(inBoundConfig, outBoundConfig)
+	instance, err := s.loadCore(s.ctx, inBoundConfig, outBoundConfig)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to load core: %s", err)
 	}
 
 	if err := instance.Start(); err != nil {
-		panic(fmt.Errorf("failed to start instance: %s", err))
+		return fmt.Errorf("failed to start instance: %s", err)
 	}
 
 	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig, agentClient)
 	s.service = buildService
 	if err := s.service.Start(); err != nil {
-		panic(fmt.Errorf("failed to start build service: %s", err))
+		return fmt.Errorf("failed to start build service: %s", err)
 	}
 	s.Running = true
 	s.instance = instance
 	log.Infoln("server is running")
 	time.Sleep(1 * time.Minute)
 	if err := s.service.StartMonitor(); err != nil {
-		panic(fmt.Errorf("failed to start service monitor: %s", err))
+		return fmt.Errorf("failed to start service monitor: %s", err)
 	}
+	return nil
 }
 
-func (s *Server) loadCore(inboundConfig *core.InboundHandlerConfig, outboundConfig *core.OutboundHandlerConfig) (*core.Instance, error) {
+func (s *Server) loadCore(ctx context.Context, inboundConfig *core.InboundHandlerConfig, outboundConfig *core.OutboundHandlerConfig) (*core.Instance, error) {
 	// Log Config
 	logConfig := &conf.LogConfig{}
 	logConfig.LogLevel = s.config.LogLevel
@@ -143,7 +147,7 @@ func (s *Server) loadCore(inboundConfig *core.InboundHandlerConfig, outboundConf
 		Outbound: outBoundConfigs,
 		Inbound:  inboundConfigs,
 	}
-	instance, err := core.New(pbCoreConfig)
+	instance, err := core.NewWithContext(ctx, pbCoreConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create instance: %s", err)
 	}
