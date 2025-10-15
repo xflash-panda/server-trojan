@@ -7,7 +7,7 @@ toolchain go1.24.9
 require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/xflash-panda/server-client v0.0.15-0.20251014073419-bcf1c82fb76a
+	github.com/xflash-panda/server-client v0.0.15-0.20251015080734-bee062efa54d
 	github.com/xtls/xray-core v1.250608.0
 	google.golang.org/protobuf v1.36.6
 )

@@ -34,9 +34,8 @@ type Builder struct {
 	nodeInfo                      *api.TrojanConfig
 	inboundTag                    string
 	userList                      *[]api.User
-	userHash                      string
 	registerId                    int
-	fetchUsers                    func(int, api.NodeType) (*[]api.User, string, error)
+	fetchUsers                    func(int, api.NodeType) (*[]api.User, error)
 	reportTraffics                func(int, api.NodeType, []*api.UserTraffic) error
 	fetchUsersMonitorPeriodic     *task.Periodic
 	reportTrafficsMonitorPeriodic *task.Periodic
@@ -44,7 +43,7 @@ type Builder struct {
 
 // New return a builder service with default parameters.
 func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, registerId int,
-	fetchUsers func(int, api.NodeType) (*[]api.User, string, error), reportTraffics func(int, api.NodeType, []*api.UserTraffic) error,
+	fetchUsers func(int, api.NodeType) (*[]api.User, error), reportTraffics func(int, api.NodeType, []*api.UserTraffic) error,
 ) *Builder {
 	builder := &Builder{
 		inboundTag:     inboundTag,
@@ -101,7 +100,7 @@ func (b *Builder) addNewUser(userInfo []api.User) (err error) {
 // Start implement the Start() function of the service interface
 func (b *Builder) Start() error {
 	// Update user
-	userList, userHash, err := b.fetchUsers(b.registerId, api.Trojan)
+	userList, err := b.fetchUsers(b.registerId, api.Trojan)
 	if err != nil {
 		return err
 	}
@@ -111,7 +110,6 @@ func (b *Builder) Start() error {
 	}
 
 	b.userList = userList
-	b.userHash = userHash
 
 	b.fetchUsersMonitorPeriodic = &task.Periodic{
 		Interval: b.config.FetchUsersInterval,
@@ -205,7 +203,7 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 // nodeInfoMonitor
 func (b *Builder) fetchUsersMonitor() (err error) {
 	// Update User
-	newUserList, newHash, err := b.fetchUsers(b.registerId, api.Trojan)
+	newUserList, err := b.fetchUsers(b.registerId, api.Trojan)
 	if err != nil {
 		if errors.Is(err, api.ErrorUserNotModified) {
 			log.Infoln(err)
@@ -214,8 +212,6 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 		}
 		return nil
 	}
-	b.userHash = newHash
-
 	deleted, added := b.compareUserList(newUserList)
 	if len(deleted) > 0 {
 		deletedEmail := make([]string, len(deleted))
