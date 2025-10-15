@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	api "github.com/xflash-panda/server-client/pkg"
-
 	log "github.com/sirupsen/logrus"
+	api "github.com/xflash-panda/server-client/pkg"
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/task"
 	"github.com/xtls/xray-core/core"
@@ -258,8 +257,16 @@ func (b *Builder) reportTrafficsMonitor() (err error) {
 	if len(userTraffic) > 0 {
 		err = b.reportTraffics(b.registerId, api.Trojan, userTraffic)
 		if err != nil {
-			log.Errorln(err)
-			return nil
+			var apiError *api.APIError
+			if errors.As(err, &apiError) {
+				if apiError.IsClientError() {
+					log.Fatalln(err)
+				}
+				if apiError.IsServerError() {
+					log.Errorln(err)
+					return nil
+				}
+			}
 		}
 	}
 
