@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	api "github.com/xflash-panda/server-client/pkg"
@@ -46,10 +47,16 @@ func (s *Server) Start() error {
 	log.Infoln("server start")
 
 	apiClient := api.New(s.apiConfig)
-	nodeConf, err := apiClient.Config(api.NodeId(s.serviceConfig.NodeID), api.Trojan)
+	hostname, err := os.Hostname()
+	if err != nil {
+		return fmt.Errorf("failed to get hostname: %s", err)
+	}
+	registerId, nodeConf, err := apiClient.Register(api.NodeId(s.serviceConfig.NodeID), api.Trojan,
+		hostname, s.serviceConfig.ServerPort, "")
 	if err != nil {
 		return fmt.Errorf("failed to get node inf :%s", err)
 	}
+	log.Infof("Registered with server, registerId: %d", registerId)
 
 	trojanConfig, ok := nodeConf.(*api.TrojanConfig)
 	if !ok {
@@ -74,7 +81,7 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to start instance: %s", err)
 	}
 
-	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig,
+	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig, registerId,
 		apiClient.Users, apiClient.Submit)
 	s.service = buildService
 	if err := s.service.Start(); err != nil {

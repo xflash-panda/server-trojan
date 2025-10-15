@@ -23,6 +23,9 @@ type Config struct {
 	ReportTrafficsInterval time.Duration
 	Cert                   *CertConfig
 	ExtConfPath            string
+	ServerHost             string
+	ServerPort             int
+	ListenAddr             string
 }
 
 type Builder struct {
@@ -31,21 +34,24 @@ type Builder struct {
 	nodeInfo                      *api.TrojanConfig
 	inboundTag                    string
 	userList                      *[]api.User
-	fetchUsers                    func(api.NodeId, api.NodeType) (*[]api.User, error)
-	reportTraffics                func(api.NodeId, api.NodeType, []*api.UserTraffic) error
+	userHash                      string
+	registerId                    int
+	fetchUsers                    func(int, api.NodeType) (*[]api.User, string, error)
+	reportTraffics                func(int, api.NodeType, []*api.UserTraffic) error
 	fetchUsersMonitorPeriodic     *task.Periodic
 	reportTrafficsMonitorPeriodic *task.Periodic
 }
 
 // New return a builder service with default parameters.
-func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig,
-	fetchUsers func(api.NodeId, api.NodeType) (*[]api.User, error), reportTraffics func(api.NodeId, api.NodeType, []*api.UserTraffic) error,
+func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, registerId int,
+	fetchUsers func(int, api.NodeType) (*[]api.User, string, error), reportTraffics func(int, api.NodeType, []*api.UserTraffic) error,
 ) *Builder {
 	builder := &Builder{
 		inboundTag:     inboundTag,
 		instance:       instance,
 		config:         config,
 		nodeInfo:       nodeInfo,
+		registerId:     registerId,
 		fetchUsers:     fetchUsers,
 		reportTraffics: reportTraffics,
 	}
@@ -95,7 +101,7 @@ func (b *Builder) addNewUser(userInfo []api.User) (err error) {
 // Start implement the Start() function of the service interface
 func (b *Builder) Start() error {
 	// Update user
-	userList, err := b.fetchUsers(api.NodeId(b.config.NodeID), api.Trojan)
+	userList, userHash, err := b.fetchUsers(b.registerId, api.Trojan)
 	if err != nil {
 		return err
 	}
@@ -105,6 +111,7 @@ func (b *Builder) Start() error {
 	}
 
 	b.userList = userList
+	b.userHash = userHash
 
 	b.fetchUsersMonitorPeriodic = &task.Periodic{
 		Interval: b.config.FetchUsersInterval,
@@ -198,7 +205,7 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 // nodeInfoMonitor
 func (b *Builder) fetchUsersMonitor() (err error) {
 	// Update User
-	newUserList, err := b.fetchUsers(api.NodeId(b.config.NodeID), api.Trojan)
+	newUserList, newHash, err := b.fetchUsers(b.registerId, api.Trojan)
 	if err != nil {
 		if errors.Is(err, api.ErrorUserNotModified) {
 			log.Infoln(err)
@@ -207,6 +214,7 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 		}
 		return nil
 	}
+	b.userHash = newHash
 
 	deleted, added := b.compareUserList(newUserList)
 	if len(deleted) > 0 {
@@ -252,7 +260,7 @@ func (b *Builder) reportTrafficsMonitor() (err error) {
 	}
 	log.Infof("%d user traffic needs to be reported", len(userTraffic))
 	if len(userTraffic) > 0 {
-		err = b.reportTraffics(api.NodeId(b.config.NodeID), api.Trojan, userTraffic)
+		err = b.reportTraffics(b.registerId, api.Trojan, userTraffic)
 		if err != nil {
 			log.Errorln(err)
 			return nil
