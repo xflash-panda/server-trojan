@@ -20,11 +20,19 @@ type Config struct {
 	NodeID                 int
 	FetchUsersInterval     time.Duration
 	ReportTrafficsInterval time.Duration
+	HeartbeatInterval      time.Duration
 	Cert                   *CertConfig
 	ExtConfPath            string
 	ServerHost             string
 	ServerPort             int
 	ListenAddr             string
+}
+
+// APIClient 定义了与API服务器交互所需的方法接口
+type APIClient interface {
+	Users(int, api.NodeType) (*[]api.User, error)
+	Submit(int, api.NodeType, []*api.UserTraffic) error
+	Heartbeat(int, api.NodeType, string) error
 }
 
 type Builder struct {
@@ -34,24 +42,23 @@ type Builder struct {
 	inboundTag                    string
 	userList                      *[]api.User
 	registerId                    int
-	fetchUsers                    func(int, api.NodeType) (*[]api.User, error)
-	reportTraffics                func(int, api.NodeType, []*api.UserTraffic) error
+	apiClient                     APIClient
 	fetchUsersMonitorPeriodic     *task.Periodic
 	reportTrafficsMonitorPeriodic *task.Periodic
+	heartbeatMonitorPeriodic      *task.Periodic
 }
 
 // New return a builder service with default parameters.
 func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, registerId int,
-	fetchUsers func(int, api.NodeType) (*[]api.User, error), reportTraffics func(int, api.NodeType, []*api.UserTraffic) error,
+	apiClient APIClient,
 ) *Builder {
 	builder := &Builder{
-		inboundTag:     inboundTag,
-		instance:       instance,
-		config:         config,
-		nodeInfo:       nodeInfo,
-		registerId:     registerId,
-		fetchUsers:     fetchUsers,
-		reportTraffics: reportTraffics,
+		inboundTag: inboundTag,
+		instance:   instance,
+		config:     config,
+		nodeInfo:   nodeInfo,
+		registerId: registerId,
+		apiClient:  apiClient,
 	}
 	return builder
 }
@@ -99,7 +106,7 @@ func (b *Builder) addNewUser(userInfo []api.User) (err error) {
 // Start implement the Start() function of the service interface
 func (b *Builder) Start() error {
 	// Update user
-	userList, err := b.fetchUsers(b.registerId, api.Trojan)
+	userList, err := b.apiClient.Users(b.registerId, api.Trojan)
 	if err != nil {
 		return err
 	}
@@ -128,6 +135,18 @@ func (b *Builder) Start() error {
 	if err != nil {
 		return fmt.Errorf("start traffic monitor periodic, start erorr:%s", err)
 	}
+
+	if b.config.HeartbeatInterval > 0 {
+		b.heartbeatMonitorPeriodic = &task.Periodic{
+			Interval: b.config.HeartbeatInterval,
+			Execute:  b.heartbeatMonitor,
+		}
+		log.Infoln("Start heartbeat monitoring")
+		err = b.heartbeatMonitorPeriodic.Start()
+		if err != nil {
+			return fmt.Errorf("start heartbeat monitor periodic, start erorr:%s", err)
+		}
+	}
 	return nil
 }
 
@@ -144,6 +163,13 @@ func (b *Builder) Close() error {
 		err := b.reportTrafficsMonitorPeriodic.Close()
 		if err != nil {
 			return fmt.Errorf("report  traffics monitor periodic close failed: %s", err)
+		}
+	}
+
+	if b.heartbeatMonitorPeriodic != nil {
+		err := b.heartbeatMonitorPeriodic.Close()
+		if err != nil {
+			return fmt.Errorf("heartbeat monitor periodic close failed: %s", err)
 		}
 	}
 	return nil
@@ -202,7 +228,7 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 // nodeInfoMonitor
 func (b *Builder) fetchUsersMonitor() (err error) {
 	// Update User
-	newUserList, err := b.fetchUsers(b.registerId, api.Trojan)
+	newUserList, err := b.apiClient.Users(b.registerId, api.Trojan)
 	if err != nil {
 		if errors.Is(err, api.ErrorUserNotModified) {
 			log.Infoln(err)
@@ -255,7 +281,7 @@ func (b *Builder) reportTrafficsMonitor() (err error) {
 	}
 	log.Infof("%d user traffic needs to be reported", len(userTraffic))
 	if len(userTraffic) > 0 {
-		err = b.reportTraffics(b.registerId, api.Trojan, userTraffic)
+		err = b.apiClient.Submit(b.registerId, api.Trojan, userTraffic)
 		if err != nil {
 			var apiError *api.APIError
 			if errors.As(err, &apiError) {
@@ -302,4 +328,22 @@ func (b *Builder) compareUserList(newUsers *[]api.User) (deleted, added []api.Us
 	}
 
 	return deleted, added
+}
+
+// heartbeatMonitor
+func (b *Builder) heartbeatMonitor() (err error) {
+	err = b.apiClient.Heartbeat(b.registerId, api.Trojan, "")
+	if err != nil {
+		var apiError *api.APIError
+		if errors.As(err, &apiError) {
+			if apiError.IsClientError() {
+				log.Fatalln(err)
+			}
+			if apiError.IsServerError() {
+				log.Errorln(err)
+				return nil
+			}
+		}
+	}
+	return nil
 }

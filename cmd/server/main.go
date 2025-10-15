@@ -100,6 +100,15 @@ func main() {
 				Required:    false,
 				Destination: &serviceConfig.ReportTrafficsInterval,
 			},
+			&cli.DurationFlag{
+				Name:        "heartbeat_interval, hbi",
+				Usage:       "API request cycle(heartbeat), unit: second",
+				EnvVars:     []string{"X_PANDA_SS_HEARTBEAT_INTERVAL", "HEARTBEAT_INTERVAL"},
+				Value:       time.Minute * 3,
+				DefaultText: "180",
+				Required:    false,
+				Destination: &serviceConfig.HeartbeatInterval,
+			},
 			&cli.StringFlag{
 				Name:        "log_mode",
 				Value:       server.LogLevelError,

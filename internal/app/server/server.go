@@ -81,8 +81,7 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to start instance: %s", err)
 	}
 
-	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig, registerId,
-		apiClient.Users, apiClient.Submit)
+	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig, registerId, apiClient)
 	s.service = buildService
 	if err := s.service.Start(); err != nil {
 		return fmt.Errorf("failed to start build service: %s", err)
