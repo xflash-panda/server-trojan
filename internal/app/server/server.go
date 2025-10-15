@@ -6,17 +6,17 @@ import (
 	"os"
 	"sync"
 
-	api "github.com/xflash-panda/server-client/pkg"
-	_ "github.com/xflash-panda/server-trojan/internal/pkg/dep"
-	"github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
-	"github.com/xflash-panda/server-trojan/internal/pkg/service"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/app/stats"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
+
+	api "github.com/xflash-panda/server-client/pkg"
+	_ "github.com/xflash-panda/server-trojan/internal/pkg/dep"
+	"github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
+	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 )
 
 type Config struct {
@@ -83,6 +83,10 @@ func (s *Server) Start() error {
 	}
 	log.Infof("Registered with server, registerId: %d", registerId)
 
+	// 注册成功后立即保存到Server结构中，这样即使后续步骤失败，Close()也能取消注册
+	s.registerId = registerId
+	s.apiClient = apiClient
+
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
 		return fmt.Errorf("failed to build inbound config: %s", err)
@@ -107,10 +111,9 @@ func (s *Server) Start() error {
 	if err := s.service.Start(); err != nil {
 		return fmt.Errorf("failed to start build service: %s", err)
 	}
+
 	s.Running = true
 	s.instance = instance
-	s.registerId = registerId
-	s.apiClient = apiClient
 	log.Infoln("server is running")
 	return nil
 }

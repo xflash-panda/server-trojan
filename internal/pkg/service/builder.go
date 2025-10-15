@@ -7,13 +7,14 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	api "github.com/xflash-panda/server-client/pkg"
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/task"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/inbound"
 	"github.com/xtls/xray-core/features/stats"
 	"github.com/xtls/xray-core/proxy"
+
+	api "github.com/xflash-panda/server-client/pkg"
 )
 
 type Config struct {
@@ -230,11 +231,25 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 	// Update User
 	newUserList, err := b.apiClient.Users(b.registerId, api.Trojan)
 	if err != nil {
+		// 数据未修改，忽略
 		if errors.Is(err, api.ErrorUserNotModified) {
-			log.Infoln(err)
-		} else {
-			log.Errorln(err)
+			return nil
 		}
+		// 区分客户端错误和服务端错误
+		var apiError *api.APIError
+		if errors.As(err, &apiError) {
+			if apiError.IsClientError() {
+				// 客户端错误，返回给上级处理
+				return fmt.Errorf("client error when fetching users: %w", err)
+			}
+			if apiError.IsServerError() {
+				// 服务端错误，打印日志
+				log.Errorln(err)
+				return nil
+			}
+		}
+		// 其他未知错误，打印日志
+		log.Errorln(err)
 		return nil
 	}
 	deleted, added := b.compareUserList(newUserList)
@@ -286,7 +301,7 @@ func (b *Builder) reportTrafficsMonitor() (err error) {
 			var apiError *api.APIError
 			if errors.As(err, &apiError) {
 				if apiError.IsClientError() {
-					log.Fatalln(err)
+					return fmt.Errorf("client error when submitting traffic: %w", err)
 				}
 				if apiError.IsServerError() {
 					log.Errorln(err)
@@ -337,7 +352,7 @@ func (b *Builder) heartbeatMonitor() (err error) {
 		var apiError *api.APIError
 		if errors.As(err, &apiError) {
 			if apiError.IsClientError() {
-				log.Fatalln(err)
+				return fmt.Errorf("client error when sending heartbeat: %w", err)
 			}
 			if apiError.IsServerError() {
 				log.Errorln(err)

@@ -8,18 +8,18 @@ import (
 	"syscall"
 	"time"
 
-	api "github.com/xflash-panda/server-client/pkg"
-	"github.com/xflash-panda/server-trojan/internal/app/server"
-	"github.com/xflash-panda/server-trojan/internal/pkg/service"
-
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 	"github.com/xtls/xray-core/core"
+
+	api "github.com/xflash-panda/server-client/pkg"
+	"github.com/xflash-panda/server-trojan/internal/app/server"
+	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 )
 
 const (
 	Name      = "trojan-node"
-	Version   = "0.2.0"
+	Version   = "0.3.0"
 	CopyRight = "XFLASH-PANDA@2021"
 )
 
@@ -153,6 +153,8 @@ func main() {
 				return fmt.Errorf("failed to create server: %w", err)
 			}
 			if err := serv.Start(); err != nil {
+				// Start失败时，需要调用Close进行清理（包括取消注册）
+				serv.Close()
 				return fmt.Errorf("failed to start server: %w", err)
 			}
 
