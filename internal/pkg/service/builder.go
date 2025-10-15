@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -235,11 +234,7 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 	b.lastUsersHash = r.GetHash()
 	newUserList, err := api.UnmarshalUsers(r.GetRawData())
 	if err != nil {
-		if errors.Is(err, api.ErrorUserNotModified) {
-			log.Infoln(err)
-		} else {
-			log.Errorln(err)
-		}
+		log.Errorln(err)
 		return nil
 	}
 
