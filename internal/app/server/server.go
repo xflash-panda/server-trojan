@@ -53,17 +53,36 @@ func (s *Server) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to get hostname: %s", err)
 	}
-	registerId, nodeConf, err := apiClient.Register(api.NodeId(s.serviceConfig.NodeID), api.Trojan,
-		hostname, s.serviceConfig.ServerPort, "")
+
+	// 第一步：先获取节点配置信息
+	log.Infof("Fetching node config for NodeID: %d", s.serviceConfig.NodeID)
+	nodeConf, err := apiClient.Config(api.NodeId(s.serviceConfig.NodeID), api.Trojan)
 	if err != nil {
-		return fmt.Errorf("failed to get node inf :%s", err)
+		return fmt.Errorf("failed to get node config: %s", err)
 	}
-	log.Infof("Registered with server, registerId: %d", registerId)
 
 	trojanConfig, ok := nodeConf.(*api.TrojanConfig)
 	if !ok {
 		return fmt.Errorf("nodeConf type assertion to *api.TrojanConfig failed")
 	}
+
+	// 从配置中获取ServerPort并更新到serviceConfig
+	if trojanConfig.ServerPort > 0 {
+		s.serviceConfig.ServerPort = trojanConfig.ServerPort
+		log.Infof("Updated ServerPort from node config: %d", s.serviceConfig.ServerPort)
+	} else {
+		return fmt.Errorf("invalid ServerPort in node config: %d", trojanConfig.ServerPort)
+	}
+
+	// 第二步：使用获取到的ServerPort进行注册
+	log.Infof("Registering node with hostname: %s, ServerPort: %d", hostname, s.serviceConfig.ServerPort)
+	registerId, err := apiClient.Register(api.NodeId(s.serviceConfig.NodeID), api.Trojan,
+		hostname, s.serviceConfig.ServerPort, "")
+	if err != nil {
+		return fmt.Errorf("failed to register node: %s", err)
+	}
+	log.Infof("Registered with server, registerId: %d", registerId)
+
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
 		return fmt.Errorf("failed to build inbound config: %s", err)
