@@ -136,13 +136,6 @@ func main() {
 			return nil
 		},
 		Action: func(c *cli.Context) error {
-			if config.LogLevel != server.LogLevelDebug {
-				defer func() {
-					if e := recover(); e != nil {
-						panic(e)
-					}
-				}()
-			}
 			serviceConfig.Cert = &certConfig
 			var extFileBytes []byte
 			if extConfPath != "" {
@@ -162,7 +155,24 @@ func main() {
 			if err := serv.Start(); err != nil {
 				return fmt.Errorf("failed to start server: %w", err)
 			}
-			defer serv.Close()
+
+			// 确保无论正常退出还是异常退出都会调用 Close
+			defer func() {
+				if e := recover(); e != nil {
+					log.Errorf("panic: %v", e)
+					// 打印堆栈信息
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					log.Errorf("stack trace:\n%s", buf[:n])
+					// 调用 Close 进行清理
+					serv.Close()
+					os.Exit(1)
+				} else {
+					// 正常退出时也调用 Close
+					serv.Close()
+				}
+			}()
+
 			runtime.GC()
 			{
 				osSignals := make(chan os.Signal, 1)

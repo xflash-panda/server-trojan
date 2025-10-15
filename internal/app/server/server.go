@@ -33,6 +33,8 @@ type Server struct {
 	Running       bool
 	extFileBytes  []byte
 	ctx           context.Context
+	registerId    int
+	apiClient     *api.Client
 }
 
 func New(config *Config, apiConfig *api.Config, serviceConfig *service.Config, extFileBytes []byte) (*Server, error) {
@@ -88,6 +90,8 @@ func (s *Server) Start() error {
 	}
 	s.Running = true
 	s.instance = instance
+	s.registerId = registerId
+	s.apiClient = apiClient
 	log.Infoln("server is running")
 	return nil
 }
@@ -149,9 +153,23 @@ func (s *Server) Close() {
 	s.access.Lock()
 	defer s.access.Unlock()
 
-	err := s.service.Close()
-	if err != nil {
-		log.Fatalf("server close failed: %s", err)
+	// 先取消注册
+	if s.apiClient != nil && s.registerId > 0 {
+		log.Infof("unregistering node, registerId: %d", s.registerId)
+		err := s.apiClient.Unregister(api.Trojan, s.registerId)
+		if err != nil {
+			log.Errorf("failed to unregister: %s", err)
+		} else {
+			log.Infoln("unregister success")
+		}
+	}
+
+	// 关闭服务
+	if s.service != nil {
+		err := s.service.Close()
+		if err != nil {
+			log.Errorf("server close failed: %s", err)
+		}
 	}
 	log.Infoln("server close")
 }
