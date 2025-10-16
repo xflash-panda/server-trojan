@@ -238,13 +238,9 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 		// 区分客户端错误和服务端错误
 		var apiError *api.APIError
 		if errors.As(err, &apiError) {
-			if apiError.IsClientError() {
-				// 客户端错误，返回给上级处理
-				return fmt.Errorf("client error when fetching users: %w", err)
-			}
 			if apiError.IsServerError() {
 				// 服务端错误，打印日志
-				log.Errorln(err)
+				log.Errorln("server error when fetching users", err)
 				return nil
 			}
 		}
@@ -300,11 +296,8 @@ func (b *Builder) reportTrafficsMonitor() (err error) {
 		if err != nil {
 			var apiError *api.APIError
 			if errors.As(err, &apiError) {
-				if apiError.IsClientError() {
-					return fmt.Errorf("client error when submitting traffic: %w", err)
-				}
 				if apiError.IsServerError() {
-					log.Errorln(err)
+					log.Errorln("server error when submitting traffic", err)
 					return nil
 				}
 			}
@@ -351,11 +344,9 @@ func (b *Builder) heartbeatMonitor() (err error) {
 	if err != nil {
 		var apiError *api.APIError
 		if errors.As(err, &apiError) {
-			if apiError.IsClientError() {
-				return fmt.Errorf("client error when sending heartbeat: %w", err)
-			}
+
 			if apiError.IsServerError() {
-				log.Errorln(err)
+				log.Errorln("server error when sending heartbeat", err)
 				return nil
 			}
 		}
