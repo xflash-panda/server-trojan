@@ -1,12 +1,14 @@
 module github.com/xflash-panda/server-trojan
 
-go 1.24.0
+go 1.24.4
+
+toolchain go1.24.9
 
 require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/xflash-panda/server-agent-proto v0.0.2
-	github.com/xflash-panda/server-client v0.0.10
+	github.com/xflash-panda/server-client v0.0.15-0.20251016122455-2354cabff4f9
 	github.com/xtls/xray-core v1.250608.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
@@ -26,7 +28,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-metro v0.0.0-20211217172704-adc40b04c140 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344 // indirect
-	github.com/go-resty/resty/v2 v2.10.0 // indirect
+	github.com/go-resty/resty/v2 v2.11.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/pprof v0.0.0-20240528025155-186aa0362fba // indirect
