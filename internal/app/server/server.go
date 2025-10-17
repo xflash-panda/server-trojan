@@ -61,17 +61,17 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		return fmt.Errorf("failed to unmarshal trojan config: %s", err)
 	}
 
-    //获取完配置，调用注册接口
-    registerResp, err := agentClient.Register(ctx, &pb.RegisterRequest{
-        NodeId:   int32(s.serviceConfig.NodeID),
-        NodeType: pb.NodeType_TROJAN,
-    })
-    if err != nil {
-        return fmt.Errorf("register error: %v", err)
-    }
-    // 保存 registerId 以便后续注销使用
-    s.registerId = registerResp.GetRegisterId()
-    s.agentClient = agentClient
+	//获取完配置，调用注册接口
+	_, err = agentClient.Register(ctx, &pb.RegisterRequest{
+		NodeId:   int32(s.serviceConfig.NodeID),
+		NodeType: pb.NodeType_TROJAN,
+	})
+	if err != nil {
+		return fmt.Errorf("register error: %v", err)
+	}
+	// 新版协议不返回 register_id，使用 NodeID 作为后续交互的 register_id
+	s.registerId = int32(s.serviceConfig.NodeID)
+	s.agentClient = agentClient
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
@@ -92,7 +92,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		return fmt.Errorf("failed to start instance: %s", err)
 	}
 
-	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig, agentClient)
+	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig, agentClient, s.registerId)
 	s.service = buildService
 	if err := s.service.Start(); err != nil {
 		return fmt.Errorf("failed to start build service: %s", err)

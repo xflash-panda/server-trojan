@@ -33,20 +33,21 @@ type Builder struct {
 	inboundTag                    string
 	userList                      *[]api.User
 	pbClient                      pb.AgentClient
+	registerId                    int32
 	fetchUsersMonitorPeriodic     *task.Periodic
 	reportTrafficsMonitorPeriodic *task.Periodic
 	heartbeatMonitorPeriodic      *task.Periodic
-	lastUsersHash                 string
 }
 
 // New return a builder service with default parameters.
-func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, pbClient pb.AgentClient) *Builder {
+func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, pbClient pb.AgentClient, registerId int32) *Builder {
 	builder := &Builder{
 		inboundTag: inboundTag,
 		instance:   instance,
 		config:     config,
 		nodeInfo:   nodeInfo,
 		pbClient:   pbClient,
+		registerId: registerId,
 	}
 	return builder
 }
@@ -96,7 +97,7 @@ func (b *Builder) Start() error {
 	// Update user
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Param: &pb.CommonParam{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
+	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{NodeType: pb.NodeType_TROJAN, RegisterId: b.registerId})
 	if err != nil {
 		return err
 	}
@@ -222,16 +223,11 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 	// Update User
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Param: &pb.CommonParam{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}, Hash: &b.lastUsersHash})
+	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{NodeType: pb.NodeType_TROJAN, RegisterId: b.registerId})
 	if err != nil {
 		log.Errorln(err)
 		return nil
 	}
-	if r.GetStatus() == pb.ChangeStatus_NOT_CHANGED {
-		log.Infoln("users not modified")
-		return nil
-	}
-	b.lastUsersHash = r.GetHash()
 	newUserList, err := api.UnmarshalUsers(r.GetRawData())
 	if err != nil {
 		log.Errorln(err)
@@ -305,7 +301,7 @@ func (b *Builder) reportTrafficsMonitor() (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
 
-	_, err = b.pbClient.Submit(ctx, &pb.SubmitRequest{Param: &pb.CommonParam{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}, RawData: trafficsRawData, RawStats: statsRawData})
+	_, err = b.pbClient.Submit(ctx, &pb.SubmitRequest{NodeType: pb.NodeType_TROJAN, RegisterId: b.registerId, RawData: trafficsRawData, RawStats: statsRawData})
 	if err != nil {
 		log.Errorln(err)
 		return nil
@@ -318,7 +314,7 @@ func (b *Builder) heartbeatMonitor() error {
 	defer cancel()
 
 	log.Infoln("heartbeat...")
-	_, err := b.pbClient.Heartbeat(ctx, &pb.HeartbeatRequest{Param: &pb.CommonParam{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
+	_, err := b.pbClient.Heartbeat(ctx, &pb.HeartbeatRequest{NodeType: pb.NodeType_TROJAN, RegisterId: b.registerId})
 	if err != nil {
 		log.Errorln(err)
 		return nil
