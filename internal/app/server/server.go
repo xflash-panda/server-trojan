@@ -61,15 +61,17 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		return fmt.Errorf("failed to unmarshal trojan config: %s", err)
 	}
 
-	//获取完配置，调用注册接口
-	_, err = agentClient.Register(ctx, &pb.RegisterRequest{
-		NodeId:   int32(s.serviceConfig.NodeID),
-		NodeType: pb.NodeType_TROJAN,
-	})
-	if err != nil {
-		return fmt.Errorf("register error: %v", err)
-	}
-	s.agentClient = agentClient
+    //获取完配置，调用注册接口
+    registerResp, err := agentClient.Register(ctx, &pb.RegisterRequest{
+        NodeId:   int32(s.serviceConfig.NodeID),
+        NodeType: pb.NodeType_TROJAN,
+    })
+    if err != nil {
+        return fmt.Errorf("register error: %v", err)
+    }
+    // 保存 registerId 以便后续注销使用
+    s.registerId = registerResp.GetRegisterId()
+    s.agentClient = agentClient
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
