@@ -57,7 +57,7 @@ func (b *Builder) addUsers(users []*cProtocol.User, tag string) error {
 	inboundManager := b.instance.GetFeature(inbound.ManagerType()).(inbound.Manager)
 	handler, err := inboundManager.GetHandler(context.Background(), tag)
 	if err != nil {
-		return fmt.Errorf("no such inbound tag: %s", err)
+		return fmt.Errorf("get inbound handler for tag %s failed: %w", tag, err)
 	}
 	inboundInstance, ok := handler.(proxy.GetInbound)
 	if !ok {
@@ -66,16 +66,16 @@ func (b *Builder) addUsers(users []*cProtocol.User, tag string) error {
 
 	userManager, ok := inboundInstance.GetInbound().(proxy.UserManager)
 	if !ok {
-		return fmt.Errorf("handler %s is not implement proxy.UserManager", err)
+		return fmt.Errorf("inbound for tag %s does not implement proxy.UserManager", tag)
 	}
 	for _, item := range users {
 		mUser, err := item.ToMemoryUser()
 		if err != nil {
-			return err
+			return fmt.Errorf("convert user to memory user failed: %w", err)
 		}
 		err = userManager.AddUser(context.Background(), mUser)
 		if err != nil {
-			return err
+			return fmt.Errorf("add user to inbound manager failed: %w", err)
 		}
 	}
 	return nil
@@ -86,7 +86,7 @@ func (b *Builder) addNewUser(userInfo []api.User) (err error) {
 	users := buildUser(b.inboundTag, userInfo)
 	err = b.addUsers(users, b.inboundTag)
 	if err != nil {
-		return err
+		return fmt.Errorf("add new users failed: %w", err)
 	}
 	log.Infof("Added %d new users", len(userInfo))
 	return nil
@@ -99,16 +99,16 @@ func (b *Builder) Start() error {
 	defer cancel()
 	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{NodeType: pb.NodeType_TROJAN, RegisterId: b.registerId})
 	if err != nil {
-		return err
+		return fmt.Errorf("fetch users from agent failed: %w", err)
 	}
 	userList, err := api.UnmarshalUsers(r.GetRawData())
 	if err != nil {
-		return err
+		return fmt.Errorf("unmarshal users failed: %w", err)
 	}
 
 	err = b.addNewUser(*userList)
 	if err != nil {
-		return err
+		return fmt.Errorf("init add users failed: %w", err)
 	}
 	b.userList = userList
 
@@ -132,18 +132,18 @@ func (b *Builder) StartMonitor() error {
 	log.Infoln("Start fetch users Monitor")
 	err := b.fetchUsersMonitorPeriodic.Start()
 	if err != nil {
-		return fmt.Errorf("fetch users monitor periodic, start erorr:%s", err)
+		return fmt.Errorf("start fetch users monitor periodic failed: %w", err)
 	}
 	log.Infoln("Start report traffics Monitor")
 	err = b.reportTrafficsMonitorPeriodic.Start()
 	if err != nil {
-		return fmt.Errorf("report traffics periodic, start erorr:%s", err)
+		return fmt.Errorf("start report traffics monitor periodic failed: %w", err)
 	}
 
 	log.Infoln("Start heartbeat task Monitor")
 	err = b.heartbeatMonitorPeriodic.Start()
 	if err != nil {
-		return fmt.Errorf("heartbeat periodic, start erorr:%s", err)
+		return fmt.Errorf("start heartbeat monitor periodic failed: %w", err)
 	}
 	return nil
 }
@@ -153,14 +153,14 @@ func (b *Builder) Close() error {
 	if b.fetchUsersMonitorPeriodic != nil {
 		err := b.fetchUsersMonitorPeriodic.Close()
 		if err != nil {
-			return fmt.Errorf("fetch users monitor periodic close failed: %s", err)
+			return fmt.Errorf("close fetch users monitor periodic failed: %w", err)
 		}
 	}
 
 	if b.reportTrafficsMonitorPeriodic != nil {
 		err := b.reportTrafficsMonitorPeriodic.Close()
 		if err != nil {
-			return fmt.Errorf("report  traffics monitor periodic close failed: %s", err)
+			return fmt.Errorf("close report traffics monitor periodic failed: %w", err)
 		}
 	}
 	if err := b.heartbeatMonitorPeriodic.Close(); err != nil {
@@ -199,7 +199,7 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 	inboundManager := b.instance.GetFeature(inbound.ManagerType()).(inbound.Manager)
 	handler, err := inboundManager.GetHandler(context.Background(), tag)
 	if err != nil {
-		return fmt.Errorf("no such inbound tag: %s", err)
+		return fmt.Errorf("get inbound handler for tag %s failed: %w", tag, err)
 	}
 	inboundInstance, ok := handler.(proxy.GetInbound)
 	if !ok {
@@ -208,12 +208,12 @@ func (b *Builder) removeUsers(users []string, tag string) error {
 
 	userManager, ok := inboundInstance.GetInbound().(proxy.UserManager)
 	if !ok {
-		return fmt.Errorf("handler %s is not implement proxy.UserManager", err)
+		return fmt.Errorf("inbound for tag %s does not implement proxy.UserManager", tag)
 	}
 	for _, email := range users {
 		err = userManager.RemoveUser(context.Background(), email)
 		if err != nil {
-			return err
+			return fmt.Errorf("remove user %s failed: %w", email, err)
 		}
 	}
 	return nil

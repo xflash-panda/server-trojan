@@ -154,7 +154,7 @@ func main() {
 					PermitWithoutStream: true,             // 允许即使没有活动流的情况下也发送探测
 				}))
 			if err != nil {
-				panic(fmt.Errorf("agent server connect error : %v", err))
+				panic(fmt.Errorf("connect agent server %s failed: %w", agentAddr, err))
 			}
 			agentClient := pb.NewAgentClient(agentConn)
 			defer agentConn.Close()
@@ -166,16 +166,16 @@ func main() {
 				var err error
 				extFileBytes, err = os.ReadFile(extConfPath)
 				if err != nil {
-					return fmt.Errorf("failed to read file binary stream: %w", err)
+					return fmt.Errorf("read ext config file %s failed: %w", extConfPath, err)
 				}
 			}
 
 			serv, err := server.New(&config, &serviceConfig, extFileBytes)
 			if err != nil {
-				return fmt.Errorf("failed to create server: %w", err)
+				return fmt.Errorf("create server failed: %w", err)
 			}
 			if err := serv.Start(agentClient); err != nil {
-				return fmt.Errorf("failed to start server: %w", err)
+				return fmt.Errorf("start server failed: %w", err)
 			}
 
 			defer serv.Close()

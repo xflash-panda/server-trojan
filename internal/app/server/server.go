@@ -53,12 +53,12 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 
 	r, err := agentClient.Config(ctx, &pb.ConfigRequest{NodeId: int32(s.serviceConfig.NodeID), NodeType: pb.NodeType_TROJAN})
 	if err != nil {
-		return fmt.Errorf("get config eror: %v", err)
+		return fmt.Errorf("fetch trojan config from agent failed: %w", err)
 	}
 
 	trojanConfig, err := api.UnmarshalTrojanConfig(r.GetRawData())
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal trojan config: %s", err)
+		return fmt.Errorf("unmarshal trojan config failed: %w", err)
 	}
 
 	//获取完配置，调用注册接口
@@ -67,7 +67,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		NodeType: pb.NodeType_TROJAN,
 	})
 	if err != nil {
-		return fmt.Errorf("register error: %v", err)
+		return fmt.Errorf("register to agent failed: %w", err)
 	}
 	// 新版协议不返回 register_id，使用 NodeID 作为后续交互的 register_id
 	s.registerId = int32(s.serviceConfig.NodeID)
@@ -75,34 +75,34 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
-		return fmt.Errorf("failed to build inbound config: %s", err)
+		return fmt.Errorf("build inbound config failed: %w", err)
 	}
 
 	outBoundConfig, err := service.OutboundBuilder(ctx, trojanConfig, s.extFileBytes)
 	if err != nil {
-		return fmt.Errorf("failed to build outbound config: %s", err)
+		return fmt.Errorf("build outbound config failed: %w", err)
 	}
 
 	instance, err := s.loadCore(s.ctx, inBoundConfig, outBoundConfig)
 	if err != nil {
-		return fmt.Errorf("failed to load core: %s", err)
+		return fmt.Errorf("load xray core failed: %w", err)
 	}
 
 	if err := instance.Start(); err != nil {
-		return fmt.Errorf("failed to start instance: %s", err)
+		return fmt.Errorf("start xray instance failed: %w", err)
 	}
 
 	buildService := service.New(inBoundConfig.Tag, instance, s.serviceConfig, trojanConfig, agentClient, s.registerId)
 	s.service = buildService
 	if err := s.service.Start(); err != nil {
-		return fmt.Errorf("failed to start build service: %s", err)
+		return fmt.Errorf("start service failed: %w", err)
 	}
 	s.Running = true
 	s.instance = instance
 	log.Infoln("server is running")
 	time.Sleep(1 * time.Minute)
 	if err := s.service.StartMonitor(); err != nil {
-		return fmt.Errorf("failed to start service monitor: %s", err)
+		return fmt.Errorf("start service monitor failed: %w", err)
 	}
 	return nil
 }
@@ -163,7 +163,7 @@ func (s *Server) loadCore(ctx context.Context, inboundConfig *core.InboundHandle
 	}
 	instance, err := core.NewWithContext(ctx, pbCoreConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create instance: %s", err)
+		return nil, fmt.Errorf("create xray instance failed: %w", err)
 	}
 	return instance, nil
 }

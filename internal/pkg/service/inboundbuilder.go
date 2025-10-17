@@ -36,7 +36,7 @@ func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHa
 	var setting *conf.TrojanServerConfig = &conf.TrojanServerConfig{}
 	jsonSetting, err := json.Marshal(setting)
 	if err != nil {
-		return nil, fmt.Errorf("marshal setting %s config fialed: %s", protocol, err)
+		return nil, fmt.Errorf("marshal inbound setting for protocol %s failed: %w", protocol, err)
 	}
 
 	// Build streamSettings
@@ -48,7 +48,7 @@ func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHa
 	}
 	_, err = transportProtocol.Build()
 	if err != nil {
-		return nil, fmt.Errorf("convert TransportProtocol failed: %s", err)
+		return nil, fmt.Errorf("convert transport protocol failed: %w", err)
 	}
 
 	if nodeInfo.Network == WS {
@@ -82,7 +82,7 @@ func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHa
 	if config.Cert.CertFile != "" && config.Cert.KeyFile != "" {
 		certFile, keyFile, err := getCertFile(config.Cert)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load cert file/key file failed: %w", err)
 		}
 		tlsSettings.Certs = append(tlsSettings.Certs, &conf.TLSCertConfig{CertFile: certFile, KeyFile: keyFile, OcspStapling: 3600})
 	}

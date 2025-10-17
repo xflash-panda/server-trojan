@@ -22,7 +22,7 @@ func OutboundBuilder(ctx context.Context, nodeInfo *api.TrojanConfig, extConfigB
 	var setting json.RawMessage
 	setting, err := json.Marshal(proxySetting)
 	if err != nil {
-		return nil, fmt.Errorf("marshal proxy Mmonster config failed: %s", err)
+		return nil, fmt.Errorf("marshal monster outbound config failed: %w", err)
 	}
 
 	outboundDetourConfig.Settings = &setting
