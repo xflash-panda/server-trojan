@@ -22,7 +22,7 @@ import (
 
 const (
 	Name      = "trojan-agent-node"
-	Version   = "0.0.9"
+	Version   = "0.1.0"
 	CopyRight = "XFLASH-PANDA@2021"
 )
 
@@ -175,10 +175,28 @@ func main() {
 				return fmt.Errorf("create server failed: %w", err)
 			}
 			if err := serv.Start(agentClient); err != nil {
+				// Start失败时，需要调用Close进行清理（包括取消注册）
+				serv.Close()
 				return fmt.Errorf("start server failed: %w", err)
 			}
 
-			defer serv.Close()
+			// 确保无论正常退出还是异常退出都会调用 Close
+			defer func() {
+				if e := recover(); e != nil {
+					log.Errorf("panic: %v", e)
+					// 打印堆栈信息
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					log.Errorf("stack trace:\n%s", buf[:n])
+					// 调用 Close 进行清理
+					serv.Close()
+					os.Exit(1)
+				} else {
+					// 正常退出时也调用 Close
+					serv.Close()
+				}
+			}()
+
 			runtime.GC()
 			{
 				osSignals := make(chan os.Signal, 1)
