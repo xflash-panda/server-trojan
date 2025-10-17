@@ -35,6 +35,8 @@ type Server struct {
 	Running       bool
 	extFileBytes  []byte
 	ctx           context.Context
+	registerId    int32
+	agentClient   pb.AgentClient
 }
 
 func New(config *Config, serviceConfig *service.Config, extFileBytes []byte) (*Server, error) {
@@ -60,14 +62,14 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 	}
 
 	//获取完配置，调用注册接口
-	regCtx, regCancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
-	defer regCancel()
-	regResp, err := agentClient.Register(regCtx, &pb.RegisterRequest{NodeId: int32(s.serviceConfig.NodeID), NodeType: pb.NodeType_TROJAN})
+	_, err = agentClient.Register(ctx, &pb.RegisterRequest{
+		NodeId:   int32(s.serviceConfig.NodeID),
+		NodeType: pb.NodeType_TROJAN,
+	})
 	if err != nil {
 		return fmt.Errorf("register error: %v", err)
 	}
-	s.serviceConfig.RegisterID = regResp.GetRegisterId()
-	log.Infof("registered, register_id=%s", s.serviceConfig.RegisterID)
+	s.agentClient = agentClient
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
@@ -167,6 +169,15 @@ func (s *Server) loadCore(ctx context.Context, inboundConfig *core.InboundHandle
 func (s *Server) Close() {
 	s.access.Lock()
 	defer s.access.Unlock()
+
+	// 在关闭服务前先尝试注销注册信息
+	if s.agentClient != nil && s.registerId != 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
+		defer cancel()
+		if _, err := s.agentClient.Unregister(ctx, &pb.UnregisterRequest{NodeType: pb.NodeType_TROJAN, RegisterId: s.registerId}); err != nil {
+			log.Warnf("unregister failed: %v", err)
+		}
+	}
 	err := s.service.Close()
 	if err != nil {
 		log.Fatalf("server close failed: %s", err)
