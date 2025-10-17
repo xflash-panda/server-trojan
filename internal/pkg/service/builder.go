@@ -228,7 +228,12 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 		log.Errorln(err)
 		return nil
 	}
-	newUserList, err := api.UnmarshalUsers(r.GetRawData())
+	raw := r.GetRawData()
+	if len(raw) == 0 {
+		log.Infoln("users unchanged, skip updating")
+		return nil
+	}
+	newUserList, err := api.UnmarshalUsers(raw)
 	if err != nil {
 		log.Errorln(err)
 		return nil
