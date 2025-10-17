@@ -96,7 +96,7 @@ func (b *Builder) Start() error {
 	// Update user
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
+	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Param: &pb.CommonParam{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 	// Update User
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}, Hash: &b.lastUsersHash})
+	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{Param: &pb.CommonParam{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}, Hash: &b.lastUsersHash})
 	if err != nil {
 		log.Errorln(err)
 		return nil
@@ -305,7 +305,7 @@ func (b *Builder) reportTrafficsMonitor() (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
 
-	_, err = b.pbClient.Submit(ctx, &pb.SubmitRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}, RawData: trafficsRawData, RawStats: statsRawData})
+	_, err = b.pbClient.Submit(ctx, &pb.SubmitRequest{Param: &pb.CommonParam{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}, RawData: trafficsRawData, RawStats: statsRawData})
 	if err != nil {
 		log.Errorln(err)
 		return nil
@@ -318,7 +318,7 @@ func (b *Builder) heartbeatMonitor() error {
 	defer cancel()
 
 	log.Infoln("heartbeat...")
-	_, err := b.pbClient.Heartbeat(ctx, &pb.HeartbeatRequest{Params: &pb.CommonParams{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
+	_, err := b.pbClient.Heartbeat(ctx, &pb.HeartbeatRequest{Param: &pb.CommonParam{NodeId: int32(b.config.NodeID), NodeType: pb.NodeType_TROJAN}})
 	if err != nil {
 		log.Errorln(err)
 		return nil

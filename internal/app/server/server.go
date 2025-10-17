@@ -49,7 +49,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 	ctx, cancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
 	defer cancel()
 
-	r, err := agentClient.Config(ctx, &pb.ConfigRequest{Params: &pb.CommonParams{NodeId: int32(s.serviceConfig.NodeID), NodeType: pb.NodeType_TROJAN}})
+	r, err := agentClient.Config(ctx, &pb.ConfigRequest{NodeId: int32(s.serviceConfig.NodeID), NodeType: pb.NodeType_TROJAN})
 	if err != nil {
 		return fmt.Errorf("get config eror: %v", err)
 	}
@@ -58,6 +58,16 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal trojan config: %s", err)
 	}
+
+	//获取完配置，调用注册接口
+	regCtx, regCancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
+	defer regCancel()
+	regResp, err := agentClient.Register(regCtx, &pb.RegisterRequest{NodeId: int32(s.serviceConfig.NodeID), NodeType: pb.NodeType_TROJAN})
+	if err != nil {
+		return fmt.Errorf("register error: %v", err)
+	}
+	s.serviceConfig.RegisterID = regResp.GetRegisterId()
+	log.Infof("registered, register_id=%s", s.serviceConfig.RegisterID)
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
 	if err != nil {
