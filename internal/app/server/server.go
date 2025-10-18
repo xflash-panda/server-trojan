@@ -65,6 +65,8 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 	_, err = agentClient.Register(ctx, &pb.RegisterRequest{
 		NodeId:   int32(s.serviceConfig.NodeID),
 		NodeType: pb.NodeType_TROJAN,
+		Port:     fmt.Sprintf("%d", trojanConfig.ServerPort),
+		Ip:       "",
 	})
 	if err != nil {
 		return fmt.Errorf("register to agent failed: %w", err)
