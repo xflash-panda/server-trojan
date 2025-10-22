@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -62,9 +63,11 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 	}
 
 	//获取完配置，调用注册接口
+	hostname, _ := os.Hostname()
 	_, err = agentClient.Register(ctx, &pb.RegisterRequest{
 		NodeId:   int32(s.serviceConfig.NodeID),
 		NodeType: pb.NodeType_TROJAN,
+		HostName: hostname,
 		Port:     fmt.Sprintf("%d", trojanConfig.ServerPort),
 		Ip:       "",
 	})
@@ -182,9 +185,11 @@ func (s *Server) Close() {
 			log.Warnf("unregister failed: %v", err)
 		}
 	}
-	err := s.service.Close()
-	if err != nil {
-		log.Fatalf("server close failed: %s", err)
+	// 仅当 service 已初始化时才执行关闭，避免空指针
+	if s.service != nil {
+		if err := s.service.Close(); err != nil {
+			log.Errorf("server close failed: %s", err)
+		}
 	}
 	log.Infoln("server close")
 }

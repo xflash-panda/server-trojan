@@ -138,13 +138,6 @@ func main() {
 			return nil
 		},
 		Action: func(c *cli.Context) error {
-			if config.LogLevel != server.LogLevelDebug {
-				defer func() {
-					if e := recover(); e != nil {
-						panic(e)
-					}
-				}()
-			}
 			serviceConfig.Cert = &certConfig
 			agentAddr := fmt.Sprintf("%s:%d", config.AgentHost, config.AgentPort)
 			agentConn, err := grpc.NewClient(agentAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(
