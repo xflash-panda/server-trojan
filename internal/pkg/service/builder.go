@@ -163,8 +163,10 @@ func (b *Builder) Close() error {
 			return fmt.Errorf("close report traffics monitor periodic failed: %w", err)
 		}
 	}
-	if err := b.heartbeatMonitorPeriodic.Close(); err != nil {
-		log.Warn("heartbeat task close error: ", err)
+	if b.heartbeatMonitorPeriodic != nil {
+		if err := b.heartbeatMonitorPeriodic.Close(); err != nil {
+			log.Warn("heartbeat task close error: ", err)
+		}
 	}
 	return nil
 }
@@ -225,7 +227,7 @@ func (b *Builder) fetchUsersMonitor() (err error) {
 	defer cancel()
 	r, err := b.pbClient.Users(ctx, &pb.UsersRequest{NodeType: pb.NodeType_TROJAN, RegisterId: b.registerId})
 	if err != nil {
-		log.Errorln(err)
+		log.Errorln("fetch users from agent failed: ", err)
 		return nil
 	}
 	raw := r.GetRawData()

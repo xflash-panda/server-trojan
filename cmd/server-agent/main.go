@@ -176,6 +176,7 @@ func main() {
 			// 确保无论正常退出还是异常退出都会调用 Close
 			defer func() {
 				if e := recover(); e != nil {
+					log.Errorln("================================================")
 					log.Errorf("panic: %v", e)
 					// 打印堆栈信息
 					buf := make([]byte, 4096)

@@ -38,6 +38,7 @@ type Server struct {
 	ctx           context.Context
 	registerId    int32
 	agentClient   pb.AgentClient
+	closeOnce     sync.Once
 }
 
 func New(config *Config, serviceConfig *service.Config, extFileBytes []byte) (*Server, error) {
@@ -174,22 +175,27 @@ func (s *Server) loadCore(ctx context.Context, inboundConfig *core.InboundHandle
 }
 
 func (s *Server) Close() {
-	s.access.Lock()
-	defer s.access.Unlock()
+	s.closeOnce.Do(func() {
+		s.access.Lock()
+		defer s.access.Unlock()
+		log.Println("================================================")
+		log.Println("server close", s.registerId)
+		log.Println("================================================")
 
-	// 在关闭服务前先尝试注销注册信息
-	if s.agentClient != nil && s.registerId != 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
-		defer cancel()
-		if _, err := s.agentClient.Unregister(ctx, &pb.UnregisterRequest{NodeType: pb.NodeType_TROJAN, RegisterId: s.registerId}); err != nil {
-			log.Warnf("unregister failed: %v", err)
+		// 在关闭服务前先尝试注销注册信息
+		if s.agentClient != nil && s.registerId != 0 {
+			ctx, cancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
+			defer cancel()
+			if _, err := s.agentClient.Unregister(ctx, &pb.UnregisterRequest{NodeType: pb.NodeType_TROJAN, RegisterId: s.registerId}); err != nil {
+				log.Warnf("unregister failed: %v", err)
+			}
 		}
-	}
-	// 仅当 service 已初始化时才执行关闭，避免空指针
-	if s.service != nil {
-		if err := s.service.Close(); err != nil {
-			log.Errorf("server close failed: %s", err)
+		// 仅当 service 已初始化时才执行关闭，避免空指针
+		if s.service != nil {
+			if err := s.service.Close(); err != nil {
+				log.Errorf("server close failed: %s", err)
+			}
 		}
-	}
-	log.Infoln("server close")
+		log.Infoln("server close")
+	})
 }
