@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"syscall"
 	"time"
 
@@ -22,7 +24,7 @@ import (
 
 const (
 	Name      = "trojan-agent-node"
-	Version   = "0.1.0"
+	Version   = "0.1.1"
 	CopyRight = "XFLASH-PANDA@2021"
 )
 
@@ -150,7 +152,6 @@ func main() {
 				panic(fmt.Errorf("connect agent server %s failed: %w", agentAddr, err))
 			}
 			agentClient := pb.NewAgentClient(agentConn)
-			defer agentConn.Close()
 
 			var extFileBytes []byte
 			if extConfPath != "" {
@@ -167,36 +168,70 @@ func main() {
 			if err != nil {
 				return fmt.Errorf("create server failed: %w", err)
 			}
-			if err := serv.Start(agentClient); err != nil {
-				// Start失败时，需要调用Close进行清理（包括取消注册）
-				serv.Close()
-				return fmt.Errorf("start server failed: %w", err)
+
+			var once sync.Once
+			done := make(chan struct{})
+
+			shutdown := func() {
+				log.Infoln("shutting down...")
+
+				// 设置关闭超时
+				shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer shutdownCancel()
+
+				// 在 goroutine 中执行关闭操作
+				shutdownDone := make(chan struct{})
+				go func() {
+					defer close(shutdownDone)
+					if err := serv.Close(); err != nil {
+						log.WithError(err).Errorln("shutdown error")
+					}
+					// 关闭 gRPC 连接
+					if err := agentConn.Close(); err != nil {
+						log.WithError(err).Errorln("close agent connection error")
+					}
+				}()
+
+				// 等待关闭完成或超时
+				select {
+				case <-shutdownDone:
+					log.Infoln("shutdown completed")
+					close(done)
+				case <-shutdownCtx.Done():
+					log.Warnln("shutdown timeout exceeded, forcing exit")
+					// 打印所有 goroutine 堆栈
+					buf := make([]byte, 1<<20) // 1MB buffer
+					stackLen := runtime.Stack(buf, true)
+					log.Errorf("All goroutine stacks:\n%s", buf[:stackLen])
+					os.Exit(1)
+				}
 			}
 
 			// 确保无论正常退出还是异常退出都会调用 Close
 			defer func() {
 				if e := recover(); e != nil {
-					log.Errorln("================================================")
 					log.Errorf("panic: %v", e)
-					// 打印堆栈信息
 					buf := make([]byte, 4096)
 					n := runtime.Stack(buf, false)
 					log.Errorf("stack trace:\n%s", buf[:n])
-					// 调用 Close 进行清理
-					serv.Close()
+					once.Do(shutdown)
 					os.Exit(1)
-				} else {
-					// 正常退出时也调用 Close
-					serv.Close()
 				}
 			}()
 
-			runtime.GC()
-			{
-				osSignals := make(chan os.Signal, 1)
-				signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
+			osSignals := make(chan os.Signal, 1)
+			signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
+			go func() {
 				<-osSignals
+				once.Do(shutdown)
+			}()
+
+			if err := serv.Start(agentClient); err != nil {
+				return fmt.Errorf("start server failed: %w", err)
 			}
+
+			// 阻塞等待关闭信号
+			<-done
 			return nil
 		},
 	}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	pb "github.com/xflash-panda/server-agent-proto/pkg"
 	api "github.com/xflash-panda/server-client/pkg"
@@ -65,7 +64,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 
 	//获取完配置，调用注册接口
 	hostname, _ := os.Hostname()
-	_, err = agentClient.Register(ctx, &pb.RegisterRequest{
+	registerResp, err := agentClient.Register(ctx, &pb.RegisterRequest{
 		NodeId:   int32(s.serviceConfig.NodeID),
 		NodeType: pb.NodeType_TROJAN,
 		HostName: hostname,
@@ -76,7 +75,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		return fmt.Errorf("register to agent failed: %w", err)
 	}
 	// 新版协议不返回 register_id，使用 NodeID 作为后续交互的 register_id
-	s.registerId = int32(s.serviceConfig.NodeID)
+	s.registerId = registerResp.GetRegisterId()
 	s.agentClient = agentClient
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
@@ -106,7 +105,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 	s.Running = true
 	s.instance = instance
 	log.Infoln("server is running")
-	time.Sleep(1 * time.Minute)
+	// 立即启动监控，不再等待 1 分钟
 	if err := s.service.StartMonitor(); err != nil {
 		return fmt.Errorf("start service monitor failed: %w", err)
 	}
@@ -174,28 +173,43 @@ func (s *Server) loadCore(ctx context.Context, inboundConfig *core.InboundHandle
 	return instance, nil
 }
 
-func (s *Server) Close() {
+func (s *Server) Close() error {
+	var closeErr error
 	s.closeOnce.Do(func() {
-		s.access.Lock()
-		defer s.access.Unlock()
-		log.Println("================================================")
-		log.Println("server close", s.registerId)
-		log.Println("================================================")
-
 		// 在关闭服务前先尝试注销注册信息
 		if s.agentClient != nil && s.registerId != 0 {
 			ctx, cancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
 			defer cancel()
 			if _, err := s.agentClient.Unregister(ctx, &pb.UnregisterRequest{NodeType: pb.NodeType_TROJAN, RegisterId: s.registerId}); err != nil {
 				log.Warnf("unregister failed: %v", err)
+				closeErr = fmt.Errorf("unregister failed: %w", err)
 			}
 		}
 		// 仅当 service 已初始化时才执行关闭，避免空指针
 		if s.service != nil {
 			if err := s.service.Close(); err != nil {
-				log.Errorf("server close failed: %s", err)
+				log.Errorf("service close failed: %s", err)
+				if closeErr != nil {
+					closeErr = fmt.Errorf("%v; service close failed: %w", closeErr, err)
+				} else {
+					closeErr = fmt.Errorf("service close failed: %w", err)
+				}
+			}
+		}
+		// 关闭 xray instance
+		if s.instance != nil {
+			if err := s.instance.Close(); err != nil {
+				log.Errorf("xray instance close failed: %s", err)
+				if closeErr != nil {
+					closeErr = fmt.Errorf("%v; xray instance close failed: %w", closeErr, err)
+				} else {
+					closeErr = fmt.Errorf("xray instance close failed: %w", err)
+				}
+			} else {
+				log.Infoln("xray instance closed")
 			}
 		}
 		log.Infoln("server close")
 	})
+	return closeErr
 }
