@@ -33,7 +33,7 @@ type Server struct {
 	Running       bool
 	extFileBytes  []byte
 	ctx           context.Context
-	registerId    int
+	registerId    string
 	apiClient     *api.Client
 }
 
@@ -81,7 +81,7 @@ func (s *Server) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to register node: %s", err)
 	}
-	log.Infof("Registered with server, registerId: %d", registerId)
+	log.Infof("Registered with server, registerId: %s", registerId)
 
 	// 注册成功后立即保存到Server结构中，这样即使后续步骤失败，Close()也能取消注册
 	s.registerId = registerId
@@ -176,8 +176,8 @@ func (s *Server) Close() {
 	defer s.access.Unlock()
 
 	// 先取消注册
-	if s.apiClient != nil && s.registerId > 0 {
-		log.Infof("unregistering node, registerId: %d", s.registerId)
+	if s.apiClient != nil && s.registerId != "" {
+		log.Infof("unregistering node, registerId: %s", s.registerId)
 		err := s.apiClient.Unregister(api.Trojan, s.registerId)
 		if err != nil {
 			log.Errorf("failed to unregister: %s", err)

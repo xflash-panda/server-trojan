@@ -31,9 +31,9 @@ type Config struct {
 
 // APIClient 定义了与API服务器交互所需的方法接口
 type APIClient interface {
-	Users(int, api.NodeType) (*[]api.User, error)
-	Submit(int, api.NodeType, []*api.UserTraffic) error
-	Heartbeat(int, api.NodeType, string) error
+	Users(string, api.NodeType) (*[]api.User, error)
+	Submit(string, api.NodeType, []*api.UserTraffic) error
+	Heartbeat(string, api.NodeType, string) error
 }
 
 type Builder struct {
@@ -42,7 +42,7 @@ type Builder struct {
 	nodeInfo                      *api.TrojanConfig
 	inboundTag                    string
 	userList                      *[]api.User
-	registerId                    int
+	registerId                    string
 	apiClient                     APIClient
 	fetchUsersMonitorPeriodic     *task.Periodic
 	reportTrafficsMonitorPeriodic *task.Periodic
@@ -50,7 +50,7 @@ type Builder struct {
 }
 
 // New return a builder service with default parameters.
-func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, registerId int,
+func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, registerId string,
 	apiClient APIClient,
 ) *Builder {
 	builder := &Builder{
@@ -344,7 +344,6 @@ func (b *Builder) heartbeatMonitor() (err error) {
 	if err != nil {
 		var apiError *api.APIError
 		if errors.As(err, &apiError) {
-
 			if apiError.IsServerError() {
 				log.Errorln("server error when sending heartbeat", err)
 				return nil
