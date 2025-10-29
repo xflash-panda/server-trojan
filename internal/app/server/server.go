@@ -35,12 +35,23 @@ type Server struct {
 	ctx           context.Context
 	registerId    string
 	apiClient     *api.Client
+	dataDir       string // 数据文件目录
 }
 
-func New(config *Config, apiConfig *api.Config, serviceConfig *service.Config, extFileBytes []byte) (*Server, error) {
+func New(config *Config, apiConfig *api.Config, serviceConfig *service.Config, extFileBytes []byte, dataDir string) (*Server, error) {
 	// 创建全局context
 	ctx := context.Background()
-	return &Server{config: config, apiConfig: apiConfig, serviceConfig: serviceConfig, extFileBytes: extFileBytes, ctx: ctx}, nil
+	if dataDir == "" {
+		dataDir = DefaultDataDir
+	}
+	return &Server{
+		config:        config,
+		apiConfig:     apiConfig,
+		serviceConfig: serviceConfig,
+		extFileBytes:  extFileBytes,
+		ctx:           ctx,
+		dataDir:       dataDir,
+	}, nil
 }
 
 func (s *Server) Start() error {
@@ -52,6 +63,13 @@ func (s *Server) Start() error {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return fmt.Errorf("failed to get hostname: %s", err)
+	}
+
+	// 尝试加载已保存的状态
+	var registerId string
+	savedState, err := LoadState(s.dataDir)
+	if err != nil {
+		log.Warnf("failed to load state: %s", err)
 	}
 
 	// 第一步：先获取节点配置信息
@@ -74,14 +92,52 @@ func (s *Server) Start() error {
 		return fmt.Errorf("invalid ServerPort in node config: %d", trojanConfig.ServerPort)
 	}
 
-	// 第二步：使用获取到的ServerPort进行注册
-	log.Infof("Registering node with hostname: %s, ServerPort: %d", hostname, s.serviceConfig.ServerPort)
-	registerId, err := apiClient.Register(api.NodeId(s.serviceConfig.NodeID), api.Trojan,
-		hostname, s.serviceConfig.ServerPort, "")
-	if err != nil {
-		return fmt.Errorf("failed to register node: %s", err)
+	// 第二步：验证并复用已保存的 register_id
+	if savedState != nil && savedState.RegisterId != "" && savedState.NodeID == s.serviceConfig.NodeID {
+		log.Infof("Found saved registerId: %s, verifying...", savedState.RegisterId)
+
+		// 调用 Verify 接口验证 register_id 是否有效
+		isValid, err := apiClient.Verify(savedState.RegisterId, api.Trojan)
+		if err != nil {
+			log.Warnf("failed to verify registerId: %s, will re-register", err)
+			// 验证失败，清空状态文件
+			if clearErr := ClearState(s.dataDir); clearErr != nil {
+				log.Warnf("failed to clear state: %s", clearErr)
+			}
+		} else if isValid {
+			// register_id 仍然有效，直接复用
+			log.Infof("registerId is valid, reusing it")
+			registerId = savedState.RegisterId
+		} else {
+			// register_id 无效，清空状态文件
+			log.Infof("registerId is invalid, will re-register")
+			if clearErr := ClearState(s.dataDir); clearErr != nil {
+				log.Warnf("failed to clear state: %s", clearErr)
+			}
+		}
 	}
-	log.Infof("Registered with server, registerId: %s", registerId)
+
+	// 第三步：如果没有有效的 register_id，则进行注册
+	if registerId == "" {
+		log.Infof("Registering node with hostname: %s, ServerPort: %d", hostname, s.serviceConfig.ServerPort)
+		registerId, err = apiClient.Register(api.NodeId(s.serviceConfig.NodeID), api.Trojan,
+			hostname, s.serviceConfig.ServerPort, "")
+		if err != nil {
+			return fmt.Errorf("failed to register node: %s", err)
+		}
+		log.Infof("Registered with server, registerId: %s", registerId)
+
+		// 注册成功后保存状态
+		newState := &State{
+			RegisterId: registerId,
+			NodeID:     s.serviceConfig.NodeID,
+			Hostname:   hostname,
+		}
+		if saveErr := SaveState(s.dataDir, newState); saveErr != nil {
+			log.Warnf("failed to save state: %s", saveErr)
+			// 不返回错误，因为注册成功了
+		}
+	}
 
 	// 注册成功后立即保存到Server结构中，这样即使后续步骤失败，Close()也能取消注册
 	s.registerId = registerId
@@ -183,6 +239,10 @@ func (s *Server) Close() {
 			log.Errorf("failed to unregister: %s", err)
 		} else {
 			log.Infoln("unregister success")
+			// 取消注册成功后，清空状态文件
+			if clearErr := ClearState(s.dataDir); clearErr != nil {
+				log.Warnf("failed to clear state after unregister: %s", clearErr)
+			}
 		}
 	}
 

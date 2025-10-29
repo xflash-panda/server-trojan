@@ -29,6 +29,7 @@ func main() {
 	var serviceConfig service.Config
 	var certConfig service.CertConfig
 	var extConfPath string
+	var dataDir string
 
 	app := &cli.App{
 		Name:      Name,
@@ -117,6 +118,15 @@ func main() {
 				Destination: &config.LogLevel,
 				Required:    false,
 			},
+			&cli.StringFlag{
+				Name:        "data_dir",
+				Usage:       "Data directory for persisting state and other data",
+				EnvVars:     []string{"X_PANDA_TROJAN_DATA_DIR", "DATA_DIR"},
+				Value:       "/tmp/trojan-node",
+				DefaultText: "/tmp/trojan-node",
+				Required:    false,
+				Destination: &dataDir,
+			},
 		},
 		Before: func(c *cli.Context) error {
 			log.SetFormatter(&log.TextFormatter{})
@@ -148,7 +158,7 @@ func main() {
 				}
 			}
 
-			serv, err := server.New(&config, &apiConfig, &serviceConfig, extFileBytes)
+			serv, err := server.New(&config, &apiConfig, &serviceConfig, extFileBytes, dataDir)
 			if err != nil {
 				return fmt.Errorf("failed to create server: %w", err)
 			}
