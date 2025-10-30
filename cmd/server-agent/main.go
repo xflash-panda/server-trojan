@@ -55,6 +55,15 @@ func main() {
 				Destination: &config.AgentPort,
 			},
 			&cli.StringFlag{
+				Name:        "data_dir",
+				Value:       "/tmp/trojan-node",
+				Usage:       "Data directory for storing state and other persistent data",
+				EnvVars:     []string{"X_PANDA_TROJAN_DATA_DIR", "DATA_DIR"},
+				DefaultText: "/tmp/trojan-node",
+				Required:    false,
+				Destination: &config.DataDir,
+			},
+			&cli.StringFlag{
 				Name:        "ext_conf_file",
 				Usage:       "Extended profiles for ACL and Outbounds(.yaml format)",
 				EnvVars:     []string{"X_PANDA_TROJAN_EXT_CONF_FILE", "EXT_CONF_FILE"},

@@ -24,6 +24,7 @@ type Config struct {
 	LogLevel  string
 	AgentHost string
 	AgentPort int
+	DataDir   string
 }
 
 type Server struct {
@@ -42,7 +43,13 @@ type Server struct {
 
 func New(config *Config, serviceConfig *service.Config, extFileBytes []byte) (*Server, error) {
 	ctx := context.Background()
-	return &Server{config: config, serviceConfig: serviceConfig, extFileBytes: extFileBytes, ctx: ctx}, nil
+
+	return &Server{
+		config:        config,
+		serviceConfig: serviceConfig,
+		extFileBytes:  extFileBytes,
+		ctx:           ctx,
+	}, nil
 }
 
 func (s *Server) Start(agentClient pb.AgentClient) error {
@@ -62,20 +69,42 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		return fmt.Errorf("unmarshal trojan config failed: %w", err)
 	}
 
-	//获取完配置，调用注册接口
-	hostname, _ := os.Hostname()
-	registerResp, err := agentClient.Register(ctx, &pb.RegisterRequest{
-		NodeId:   int32(s.serviceConfig.NodeID),
-		NodeType: pb.NodeType_TROJAN,
-		HostName: hostname,
-		Port:     fmt.Sprintf("%d", trojanConfig.ServerPort),
-		Ip:       "",
-	})
+	// 先尝试从文件加载state
+	state, err := LoadState(s.config.DataDir)
 	if err != nil {
-		return fmt.Errorf("register to agent failed: %w", err)
+		log.Warnf("load state failed: %v", err)
 	}
-	// 新版协议不返回 register_id，使用 NodeID 作为后续交互的 register_id
-	s.registerId = fmt.Sprintf("%d", registerResp.GetRegisterId())
+
+	// 如果没有保存的registerId，则调用注册接口
+	if state == nil || state.RegisterId == "" {
+		log.Infoln("no saved state found, registering...")
+		hostname, _ := os.Hostname()
+		registerResp, err := agentClient.Register(ctx, &pb.RegisterRequest{
+			NodeId:   int32(s.serviceConfig.NodeID),
+			NodeType: pb.NodeType_TROJAN,
+			HostName: hostname,
+			Port:     fmt.Sprintf("%d", trojanConfig.ServerPort),
+			Ip:       "",
+		})
+		if err != nil {
+			return fmt.Errorf("register to agent failed: %w", err)
+		}
+		s.registerId = registerResp.GetRegisterId()
+
+		// 保存state到文件
+		state = &State{
+			RegisterId: s.registerId,
+			NodeID:     s.serviceConfig.NodeID,
+			Hostname:   hostname,
+		}
+		if err := SaveState(s.config.DataDir, state); err != nil {
+			log.Warnf("save state failed: %v", err)
+		}
+	} else {
+		log.Infof("using saved state: register_id=%s, node_id=%d, hostname=%s",
+			state.RegisterId, state.NodeID, state.Hostname)
+		s.registerId = state.RegisterId
+	}
 	s.agentClient = agentClient
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
@@ -183,6 +212,11 @@ func (s *Server) Close() error {
 			if _, err := s.agentClient.Unregister(ctx, &pb.UnregisterRequest{NodeType: pb.NodeType_TROJAN, RegisterId: s.registerId}); err != nil {
 				log.Warnf("unregister failed: %v", err)
 				closeErr = fmt.Errorf("unregister failed: %w", err)
+			} else {
+				// 注销成功后清空state文件
+				if err := ClearState(s.config.DataDir); err != nil {
+					log.Warnf("clear state failed: %v", err)
+				}
 			}
 		}
 		// 仅当 service 已初始化时才执行关闭，避免空指针
