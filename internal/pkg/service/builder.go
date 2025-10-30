@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/xflash-panda/server-agent-proto/pkg"
-	api "github.com/xflash-panda/server-client/pkg"
-
 	log "github.com/sirupsen/logrus"
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/task"
@@ -15,6 +12,9 @@ import (
 	"github.com/xtls/xray-core/features/inbound"
 	"github.com/xtls/xray-core/features/stats"
 	"github.com/xtls/xray-core/proxy"
+
+	pb "github.com/xflash-panda/server-agent-proto/pkg"
+	api "github.com/xflash-panda/server-client/pkg"
 )
 
 type Config struct {

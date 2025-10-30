@@ -6,18 +6,18 @@ import (
 	"os"
 	"sync"
 
-	pb "github.com/xflash-panda/server-agent-proto/pkg"
-	api "github.com/xflash-panda/server-client/pkg"
-	_ "github.com/xflash-panda/server-trojan/internal/pkg/dep"
-	"github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
-	"github.com/xflash-panda/server-trojan/internal/pkg/service"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/app/stats"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
+
+	pb "github.com/xflash-panda/server-agent-proto/pkg"
+	api "github.com/xflash-panda/server-client/pkg"
+	_ "github.com/xflash-panda/server-trojan/internal/pkg/dep"
+	"github.com/xflash-panda/server-trojan/internal/pkg/dispatcher"
+	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 )
 
 type Config struct {
@@ -75,9 +75,38 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		log.Warnf("load state failed: %v", err)
 	}
 
-	// 如果没有保存的registerId，则调用注册接口
-	if state == nil || state.RegisterId == "" {
-		log.Infoln("no saved state found, registering...")
+	needRegister := false
+	// 如果有保存的registerId，先验证其有效性
+	if state != nil && state.RegisterId != "" {
+		log.Infof("found saved state: register_id=%s, node_id=%d, hostname=%s",
+			state.RegisterId, state.NodeID, state.Hostname)
+		log.Infoln("verifying register_id...")
+
+		// 调用Verify验证registerId是否有效
+		_, err := agentClient.Verify(ctx, &pb.VerifyRequest{
+			NodeType:   pb.NodeType_TROJAN,
+			RegisterId: state.RegisterId,
+		})
+		if err != nil {
+			// 验证失败，清空state并重新注册
+			log.Warnf("verify register_id failed: %v, will re-register", err)
+			needRegister = true
+			if err := ClearState(s.config.DataDir); err != nil {
+				log.Warnf("clear state failed: %v", err)
+			}
+		} else {
+			// 验证成功，使用保存的registerId
+			log.Infoln("register_id verified successfully")
+			s.registerId = state.RegisterId
+		}
+	} else {
+		log.Infoln("no saved state found")
+		needRegister = true
+	}
+
+	// 如果需要注册，则调用注册接口
+	if needRegister {
+		log.Infoln("registering to agent...")
 		hostname, _ := os.Hostname()
 		registerResp, err := agentClient.Register(ctx, &pb.RegisterRequest{
 			NodeId:   int32(s.serviceConfig.NodeID),
@@ -100,10 +129,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		if err := SaveState(s.config.DataDir, state); err != nil {
 			log.Warnf("save state failed: %v", err)
 		}
-	} else {
-		log.Infof("using saved state: register_id=%s, node_id=%d, hostname=%s",
-			state.RegisterId, state.NodeID, state.Hostname)
-		s.registerId = state.RegisterId
+		log.Infof("registration successful, register_id=%s", s.registerId)
 	}
 	s.agentClient = agentClient
 

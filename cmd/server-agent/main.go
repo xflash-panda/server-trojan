@@ -10,16 +10,16 @@ import (
 	"syscall"
 	"time"
 
-	pb "github.com/xflash-panda/server-agent-proto/pkg"
-	"github.com/xflash-panda/server-trojan/internal/app/server"
-	"github.com/xflash-panda/server-trojan/internal/pkg/service"
-
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 	"github.com/xtls/xray-core/core"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+
+	pb "github.com/xflash-panda/server-agent-proto/pkg"
+	"github.com/xflash-panda/server-trojan/internal/app/server"
+	"github.com/xflash-panda/server-trojan/internal/pkg/service"
 )
 
 const (
@@ -56,10 +56,10 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:        "data_dir",
-				Value:       "/tmp/trojan-node",
+				Value:       "/tmp/trojan-agent-node",
 				Usage:       "Data directory for storing state and other persistent data",
 				EnvVars:     []string{"X_PANDA_TROJAN_DATA_DIR", "DATA_DIR"},
-				DefaultText: "/tmp/trojan-node",
+				DefaultText: "/tmp/trojan-agent-node",
 				Required:    false,
 				Destination: &config.DataDir,
 			},

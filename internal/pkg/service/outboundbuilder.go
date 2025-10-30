@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	api "github.com/xflash-panda/server-client/pkg"
-
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
+
+	api "github.com/xflash-panda/server-client/pkg"
 )
 
 // OutboundBuilder build monster outbund config for addoutbound

@@ -3,11 +3,11 @@ package service
 import (
 	"fmt"
 
-	api "github.com/xflash-panda/server-client/pkg"
-
 	cProtocol "github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/proxy/trojan"
+
+	api "github.com/xflash-panda/server-client/pkg"
 )
 
 func buildUser(tag string, userInfo []api.User) (users []*cProtocol.User) {
