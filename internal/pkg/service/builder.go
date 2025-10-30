@@ -33,14 +33,14 @@ type Builder struct {
 	inboundTag                    string
 	userList                      *[]api.User
 	pbClient                      pb.AgentClient
-	registerId                    int32
+	registerId                    string
 	fetchUsersMonitorPeriodic     *task.Periodic
 	reportTrafficsMonitorPeriodic *task.Periodic
 	heartbeatMonitorPeriodic      *task.Periodic
 }
 
 // New return a builder service with default parameters.
-func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, pbClient pb.AgentClient, registerId int32) *Builder {
+func New(inboundTag string, instance *core.Instance, config *Config, nodeInfo *api.TrojanConfig, pbClient pb.AgentClient, registerId string) *Builder {
 	builder := &Builder{
 		inboundTag: inboundTag,
 		instance:   instance,

@@ -35,7 +35,7 @@ type Server struct {
 	Running       bool
 	extFileBytes  []byte
 	ctx           context.Context
-	registerId    int32
+	registerId    string
 	agentClient   pb.AgentClient
 	closeOnce     sync.Once
 }
@@ -75,7 +75,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		return fmt.Errorf("register to agent failed: %w", err)
 	}
 	// 新版协议不返回 register_id，使用 NodeID 作为后续交互的 register_id
-	s.registerId = registerResp.GetRegisterId()
+	s.registerId = fmt.Sprintf("%d", registerResp.GetRegisterId())
 	s.agentClient = agentClient
 
 	inBoundConfig, err := service.InboundBuilder(s.serviceConfig, trojanConfig)
@@ -177,7 +177,7 @@ func (s *Server) Close() error {
 	var closeErr error
 	s.closeOnce.Do(func() {
 		// 在关闭服务前先尝试注销注册信息
-		if s.agentClient != nil && s.registerId != 0 {
+		if s.agentClient != nil && s.registerId != "" {
 			ctx, cancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
 			defer cancel()
 			if _, err := s.agentClient.Unregister(ctx, &pb.UnregisterRequest{NodeType: pb.NodeType_TROJAN, RegisterId: s.registerId}); err != nil {
