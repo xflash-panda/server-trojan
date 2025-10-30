@@ -236,7 +236,10 @@ func main() {
 			}()
 
 			if err := serv.Start(agentClient); err != nil {
-				return fmt.Errorf("start server failed: %w", err)
+				// Gọi cleanup trước khi exit
+				log.WithError(err).Errorln("start server failed")
+				once.Do(shutdown)
+				os.Exit(1)
 			}
 
 			// 阻塞等待关闭信号
