@@ -83,7 +83,7 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 		log.Infoln("verifying register_id...")
 
 		// 调用Verify验证registerId是否有效
-		_, err := agentClient.Verify(ctx, &pb.VerifyRequest{
+		verifyResp, err := agentClient.Verify(ctx, &pb.VerifyRequest{
 			NodeType:   pb.NodeType_TROJAN,
 			RegisterId: state.RegisterId,
 		})
@@ -94,10 +94,17 @@ func (s *Server) Start(agentClient pb.AgentClient) error {
 			if err := ClearState(s.config.DataDir); err != nil {
 				log.Warnf("clear state failed: %v", err)
 			}
-		} else {
+		} else if verifyResp != nil && verifyResp.GetResult() {
 			// 验证成功，使用保存的registerId
 			log.Infoln("register_id verified successfully")
 			s.registerId = state.RegisterId
+		} else {
+			// result为false，验证失败，清空state并重新注册
+			log.Warnf("verify register_id failed: result is false, will re-register")
+			needRegister = true
+			if err := ClearState(s.config.DataDir); err != nil {
+				log.Warnf("clear state failed: %v", err)
+			}
 		}
 	} else {
 		log.Infoln("no saved state found")
@@ -235,14 +242,19 @@ func (s *Server) Close() error {
 		if s.agentClient != nil && s.registerId != "" {
 			ctx, cancel := context.WithTimeout(context.Background(), service.DefaultTimeout)
 			defer cancel()
-			if _, err := s.agentClient.Unregister(ctx, &pb.UnregisterRequest{NodeType: pb.NodeType_TROJAN, RegisterId: s.registerId}); err != nil {
+			unregisterResp, err := s.agentClient.Unregister(ctx, &pb.UnregisterRequest{NodeType: pb.NodeType_TROJAN, RegisterId: s.registerId})
+			if err != nil {
 				log.Warnf("unregister failed: %v", err)
 				closeErr = fmt.Errorf("unregister failed: %w", err)
-			} else {
+			} else if unregisterResp != nil && unregisterResp.GetResult() {
 				// 注销成功后清空state文件
 				if err := ClearState(s.config.DataDir); err != nil {
 					log.Warnf("clear state failed: %v", err)
 				}
+			} else {
+				// result为false，注销失败
+				log.Warnf("unregister failed: result is false")
+				closeErr = fmt.Errorf("unregister failed: result is false")
 			}
 		}
 		// 仅当 service 已初始化时才执行关闭，避免空指针
