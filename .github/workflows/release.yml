@@ -3,23 +3,8 @@ name: Build and Release
 on:
   workflow_dispatch:
   push:
-    branches:
-      - agent-master
-      - agent-dev
-    paths:
-      - "**/*.go"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/*.yml"
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - "**/*.go"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/*.yml"
-  release:
-    types: [published]
+    tags:
+      - "av*"
 
 jobs:
   build:
@@ -35,7 +20,8 @@ jobs:
       CGO_ENABLED: 0
     steps:
       - name: Checkout codebase
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v4
+
       - name: Show workflow information
         id: get_filename
         run: |
@@ -44,13 +30,17 @@ jobs:
           [ -z "$_NAME" ] && echo "Error: _NAME is empty" && exit 1
           echo "GOOS: $GOOS, GOARCH: $GOARCH, RELEASE_NAME: $_NAME"
           echo "ASSET_NAME=$_NAME" >> $GITHUB_ENV
+
       - name: Debug output
         run: |
           echo "ASSET_NAME from environment: $ASSET_NAME"
+
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.24.4
+          go-version: "1.24"
+          cache: true
+
       - name: Get project dependencies
         run: go mod download
 
@@ -58,19 +48,23 @@ jobs:
         run: |
           mkdir -p build_assets
           go build -v -o build_assets/server-trojan-agent -trimpath -ldflags "-s -w" ./cmd/server-agent
+
       - name: Build Mips softfloat Server
         if: matrix.goarch == 'mips' || matrix.goarch == 'mipsle'
         run: |
-            GOMIPS=softfloat go build -v -o build_assets/server-trojan-agent-softfloat -trimpath -ldflags "-s -w" ./cmd/server-agent
+          GOMIPS=softfloat go build -v -o build_assets/server-trojan-agent-softfloat -trimpath -ldflags "-s -w" ./cmd/server-agent
+
       - name: Rename Windows Server
         if: matrix.goos == 'windows'
         run: |
           cd ./build_assets || exit 1
           mv server-trojan-agent server-trojan-agent.exe
+
       - name: Prepare to release
         run: |
           cp ${GITHUB_WORKSPACE}/README.md ./build_assets/README.md
           cp ${GITHUB_WORKSPACE}/LICENSE ./build_assets/LICENSE
+
       - name: Create ZIP archive
         shell: bash
         run: |
@@ -84,10 +78,10 @@ jobs:
           do
             openssl dgst -$METHOD $FILE | sed 's/([^)]*)//g' >>$DGST
           done
+
       - name: Change the name
         run: |
           mv build_assets server-trojan-agent-$ASSET_NAME
-      # Upload to artifacts
 
       - name: Upload files to Artifacts
         uses: actions/upload-artifact@v4
@@ -95,7 +89,7 @@ jobs:
           name: server-trojan-agent-${{ env.ASSET_NAME }}
           path: |
             ./server-trojan-agent-${{ env.ASSET_NAME }}
-      # Upload binaries to release
+
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         if: github.event_name == 'release'

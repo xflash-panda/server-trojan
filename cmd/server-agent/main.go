@@ -56,10 +56,10 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:        "data_dir",
-				Value:       "/tmp/trojan-agent-node",
+				Value:       "/var/lib/trojan-agent-node",
 				Usage:       "Data directory for storing state and other persistent data",
 				EnvVars:     []string{"X_PANDA_TROJAN_DATA_DIR", "DATA_DIR"},
-				DefaultText: "/tmp/trojan-agent-node",
+				DefaultText: "/var/lib/trojan-agent-node",
 				Required:    false,
 				Destination: &config.DataDir,
 			},
@@ -132,18 +132,18 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			log.SetFormatter(&log.TextFormatter{})
-			if config.LogLevel == server.LogLevelDebug {
+			switch config.LogLevel {
+			case server.LogLevelDebug:
 				log.SetFormatter(&log.TextFormatter{
 					FullTimestamp: true,
 				})
 				log.SetLevel(log.DebugLevel)
 				log.SetReportCaller(true)
-			} else if config.LogLevel == server.LogLevelInfo {
+			case server.LogLevelInfo:
 				log.SetLevel(log.InfoLevel)
-			} else if config.LogLevel == server.LogLevelError {
+			case server.LogLevelError:
 				log.SetLevel(log.ErrorLevel)
-			} else {
+			default:
 				return fmt.Errorf("log mode %s not supported", config.LogLevel)
 			}
 			return nil
