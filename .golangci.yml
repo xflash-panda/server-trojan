@@ -1,3 +1,6 @@
-issues:
-  exclude-dirs:
-    - internal/pkg/dispatcher
+version: "2"
+
+linters:
+  exclusions:
+    paths:
+      - internal/pkg/dispatcher
