@@ -26,3 +26,7 @@
 cmd/server-agent/server-agent
 cmd/server-agent/geoip.dat
 cmd/server-agent/geosite.dat
+
+# Claude Code
+.claude/
+CLAUDE.md
