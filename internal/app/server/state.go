@@ -17,7 +17,7 @@ type State struct {
 }
 
 const (
-	DefaultDataDir = "/tmp/trojan-node"
+	DefaultDataDir = "/var/lib/trojan-node"
 	StateFileName  = "state.json"
 )
 
