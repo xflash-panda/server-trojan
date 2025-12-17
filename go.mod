@@ -11,8 +11,7 @@ require (
 	github.com/xflash-panda/server-client v0.1.1
 	github.com/xtls/xray-core v1.250608.0
 	google.golang.org/grpc v1.73.0
-	google.golang.org/protobuf v1.36.6
-
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
