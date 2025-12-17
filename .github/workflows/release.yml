@@ -25,15 +25,11 @@ jobs:
       - name: Show workflow information
         id: get_filename
         run: |
-          export _NAME=$(jq ".[\"$GOOS-$GOARCH\"].friendlyName" -r < .github/build/friendly-filenames.json)
+          _NAME=$(jq ".[\"$GOOS-$GOARCH\"].friendlyName" -r < .github/build/friendly-filenames.json)
           echo "_NAME: $_NAME"
           [ -z "$_NAME" ] && echo "Error: _NAME is empty" && exit 1
           echo "GOOS: $GOOS, GOARCH: $GOARCH, RELEASE_NAME: $_NAME"
-          echo "ASSET_NAME=$_NAME" >> $GITHUB_ENV
-
-      - name: Debug output
-        run: |
-          echo "ASSET_NAME from environment: $ASSET_NAME"
+          echo "ASSET_NAME=$_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -68,6 +64,7 @@ jobs:
       - name: Create ZIP archive
         shell: bash
         run: |
+          ASSET_NAME="${{ steps.get_filename.outputs.ASSET_NAME }}"
           pushd build_assets || exit 1
           touch -mt $(date +%Y01010000) *
           zip -9vr ../server-trojan-agent-$ASSET_NAME.zip .
@@ -81,20 +78,20 @@ jobs:
 
       - name: Change the name
         run: |
-          mv build_assets server-trojan-agent-$ASSET_NAME
+          mv build_assets server-trojan-agent-${{ steps.get_filename.outputs.ASSET_NAME }}
 
       - name: Upload files to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: server-trojan-agent-${{ env.ASSET_NAME }}
+          name: server-trojan-agent-${{ steps.get_filename.outputs.ASSET_NAME }}
           path: |
-            ./server-trojan-agent-${{ env.ASSET_NAME }}
+            ./server-trojan-agent-${{ steps.get_filename.outputs.ASSET_NAME }}
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         if: github.event_name == 'release'
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./server-trojan-agent-${{ env.ASSET_NAME }}.zip*
+          file: ./server-trojan-agent-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
           tag: ${{ github.ref }}
           file_glob: true
