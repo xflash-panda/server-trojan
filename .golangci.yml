@@ -7,8 +7,7 @@ linters:
   default: standard
   disable:
     - depguard
-
-issues:
-  exclude-dirs:
-    - internal/pkg/dispatcher
-    - vendor
+  exclusions:
+    paths:
+      - internal/pkg/dispatcher
+      - vendor
