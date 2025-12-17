@@ -78,7 +78,7 @@ jobs:
         run: |
           mv build_assets server-trojan-$ASSET_NAME
       - name: Upload files to Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: server-trojan-${{ steps.get_filename.outputs.ASSET_NAME }}
           path: |
