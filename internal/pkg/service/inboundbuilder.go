@@ -33,7 +33,7 @@ func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHa
 	}
 	inboundDetourConfig.SniffingConfig = sniffingConfig
 
-	var setting *conf.TrojanServerConfig = &conf.TrojanServerConfig{}
+	setting := &conf.TrojanServerConfig{}
 
 	jsonSetting, err := json.Marshal(setting)
 	if err != nil {
@@ -52,7 +52,8 @@ func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHa
 		return nil, fmt.Errorf("convert TransportProtocol failed: %s", err)
 	}
 
-	if nodeInfo.Network == WS {
+	switch nodeInfo.Network {
+	case WS:
 		if nodeInfo.WebSocketConfig != nil {
 			wsConfig := &conf.WebSocketConfig{
 				Path: nodeInfo.WebSocketConfig.Path,
@@ -61,7 +62,7 @@ func InboundBuilder(config *Config, nodeInfo *api.TrojanConfig) (*core.InboundHa
 		} else {
 			streamSetting.WSSettings = &conf.WebSocketConfig{}
 		}
-	} else if nodeInfo.Network == GRPC {
+	case GRPC:
 		if nodeInfo.GrpcConfig != nil {
 			grpcConfig := &conf.GRPCConfig{
 				ServiceName: nodeInfo.GrpcConfig.ServiceName,
