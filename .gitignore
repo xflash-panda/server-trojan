@@ -25,3 +25,7 @@
 cmd/server/server
 cmd/server/geoip.dat
 cmd/server/geosite.dat
+
+# Claude
+CLAUDE.md
+.claude/
