@@ -9,7 +9,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/xflash-panda/server-client v0.1.4
 	github.com/xtls/xray-core v1.250608.0
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
