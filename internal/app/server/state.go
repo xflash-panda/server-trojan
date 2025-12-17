@@ -73,7 +73,7 @@ func SaveState(dataDir string, state *State) error {
 	}
 
 	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("failed to rename state file: %w", err)
 	}
 
