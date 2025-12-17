@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(gh run list:*)",
+      "Bash(go build:*)"
     ]
   }
 }

@@ -25,7 +25,7 @@ import (
 const (
 	Name      = "trojan-agent-node"
 	Version   = "0.1.4"
-	CopyRight = "XFLASH-PANDA@2021"
+	Copyright = "XFLASH-PANDA@2021"
 )
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 	app := &cli.App{
 		Name:      Name,
 		Version:   Version,
-		Copyright: CopyRight,
+		Copyright: Copyright,
 		Usage:     "Provide trojan service for the v2Board(XFLASH-PANDA)",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
